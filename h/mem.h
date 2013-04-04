@@ -28,10 +28,15 @@
 				+ (unsigned)sizeof(int)),	\
 				(int)roundmb(len) )
 
+// How does this list of free blocks work? 
+//     - Since it is memory and the block of memory is free
+//       then it is free to store the data elements mnext and 
+//       mlen within the memory itself. No external data structure
+//       is needed. 
 struct	mblock	{
 	struct	mblock	*mnext;
 	unsigned int	mlen;
-	};
+};
 extern	struct	mblock	memlist;	/* head of free memory list	*/
 extern	char	*maxaddr;		/* max memory address		*/
 extern	WORD	_end;			/* address beyond loaded memory	*/

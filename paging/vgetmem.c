@@ -7,16 +7,12 @@
 #include <paging.h>
 
 extern struct pentry proctab[];
-/*------------------------------------------------------------------------
- * vgetmem  --  allocate virtual heap storage, returning lowest WORD address
- *------------------------------------------------------------------------
+/*
+ * vgetmem:
+ *     allocate virtual heap storage, returning lowest WORD address
  */
-WORD	*vgetmem(nbytes)
-	unsigned nbytes;
-{
+WORD *vgetmem(unsigned nbytes) {
 
-	kprintf("To be implemented!\n");
-	return( SYSERR );
+    kprintf("To be implemented!\n");
+    return( SYSERR );
 }
-
-

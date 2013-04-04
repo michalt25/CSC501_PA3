@@ -10,10 +10,7 @@ extern struct pentry proctab[];
  *  vfreemem  --  free a virtual memory block, returning it to vmemlist
  *------------------------------------------------------------------------
  */
-SYSCALL	vfreemem(block, size)
-	struct	mblock	*block;
-	unsigned size;
-{
-	kprintf("To be implemented!\n");
-	return(OK);
+SYSCALL vfreemem(struct mblock* block, unsigned size) {
+    kprintf("To be implemented!\n");
+    return OK;
 }
