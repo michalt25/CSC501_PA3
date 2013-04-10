@@ -72,11 +72,13 @@ struct  pentry  {
         int     prate;                  /* rate value in psp            */
 
 /* for demand paging */
-        unsigned long pdbr;             /* PDBR (page directory base reg) */
-        int     store;                  /* backing store for vheap      */
-        int     vhpno;                  /* starting pageno for vheap    */
-        int     vhpnpages;              /* vheap size                   */
-        struct mblock *vmemlist;        /* vheap list                   */
+        pd_t * pd;               /* pointer to page directory in memory */
+        //XXX or frame_t *pd; /* page directory */
+        bsd_t  bsid;             /* backing store for vheap      */
+        int    hvpno;            /* starting pageno for vheap    */
+        int    hsize;            /* vheap size (in pages)        */
+        struct mblock vmemlist;  /* vheap list                   */
+        bs_map_t map[NBS];       /* A map for each backing store */
 };
 
 

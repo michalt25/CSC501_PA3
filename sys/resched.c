@@ -87,15 +87,11 @@ int resched()
     // switch between memory spaces. This is accomplished by adjusting
     // the PDBR register with every context switch. 
     //
-    // XXX - must be careful, however, as this register must always
-    // point to a valid page directory which is in
-    // RAM at a page boundary.
-    //
     // 5 - Context switch
     //      - every process has separate page directory
     //      - before ctxsw() load CR3 with the process' PDBR
-    write_cr3(FP2PA (nptr->pd) );
-    
+    set_PDBR(nptr->pd);
+
     ctxsw(&optr->pesp, optr->pirmask, &nptr->pesp, nptr->pirmask);
 
 #ifdef  DEBUG

@@ -5,25 +5,37 @@
 #include <paging.h>
 
 
-//
-// pfint - paging fault ISR
-//
-// A page fault indicates one of two things: the virtual page on which
-// the faulted address exists is not present or the page table which
-// contains the entry for the page on which the faulted address exists
-// is not present.
-//
+
+//XXX should interrupts are disabled during page allocation? Are they
+//    already while we are in here?
+
+
+/*
+ * pfint - paging fault ISR
+ *
+ * A page fault indicates one of two things: the virtual page on which
+ * the faulted address exists is not present or the page table which
+ * contains the entry for the page on which the faulted address exists
+ * is not present.
+ */
 SYSCALL pfint() {
     vir_addr_t vaddr; 
-    pd_t * page_dir;
-    pt_t * page_table;
+    pd_t * pd;
+    pt_t * pt;
+    int pd_offset;
+    int pt_offset;
+    int pg_offset;
+    bsd_t bsid;
+    bs_t * bsptr;
+    int bsoffset;
+    frame_t * frame;
 
     // Get the faulted address. The processor loads the CR2 register
     // with the 32-bit address that generated the exception.
     vaddr = (vir_addr_t) read_cr2();
 
     // Get the base page directory for the process
-    page_dir = get_PDBR();
+    pd = get_PDBR();
 
     // Is it a legal address (has the address been mapped) ?
     // If not then print error and kill process.
@@ -31,46 +43,90 @@ SYSCALL pfint() {
 
     // Get the Page Table # ([31:22], upper 10 bits) which is
     //  - AKA the offset into the page directory
-    vaddr.pd_offset;
+    pd_offset = vaddr.pd_offset;
 
     // Get the Page # ([21:12], next 10 bits)
     //  - AKA the offset into the page table
-    vaddr.pt_offset;
+    pt_offset = vaddr.pt_offset;
 
     // Get the offset into the page ([11:0]) 
-    vaddr.pg_offset;
+    pg_offset = vaddr.pg_offset;
 
 
 
     // If the Page Table does not exist create it.
     // XXX
-    if (page_dir[pd_offset].pd_pres != 1) {
+    if (pd[pd_offset].pt_pres != 1) {
 
         // Create a new page table and fill in its properties in
         // the corresponding page directory entry
-        page_table = new_page_table();
-        if (page_table == SYSERR) {
+        pt = pt_alloc();
+        if (pt == NULL) {
             kprintf("Could not create page table!\n");
             return SYSERR;
         }
 
-        page_dir[pd_offset].pd_pres  = 1;       /* page table present?      */
-        page_dir[pd_offset].pd_write = 0;       /* page is writable?        */
-        page_dir[pd_offset].pd_user  = 0;       /* is user level protection? */
-        page_dir[pd_offset].pd_pwt   = 0;       /* write through caching for pt?*/
-        page_dir[pd_offset].pd_pcd   = 0;       /* cache disable for this pt?   */
-        page_dir[pd_offset].pd_acc   = 0;       /* page table was accessed? */
-        page_dir[pd_offset].pd_mbz   = 0;       /* must be zero         */
-        page_dir[pd_offset].pd_fmb   = 0;       /* four MB pages?       */
-        page_dir[pd_offset].pd_global= 0;       /* global (ignored)     */
-        page_dir[pd_offset].pd_avail = 0;       /* for programmer's use     */
-        page_dir[pd_offset].pd_base  = page_table; /* location of page table?  */
+        pd[pd_offset].pt_pres  = 1;   /* page table present?      */
+        pd[pd_offset].pt_write = 1;   /* page is writable?        */
+        pd[pd_offset].pt_user  = 0;   /* is user level protection? */
+        pd[pd_offset].pt_pwt   = 0;   /* write through caching for pt?*/
+        pd[pd_offset].pt_pcd   = 0;   /* cache disable for this pt?   */
+        pd[pd_offset].pt_acc   = 0;   /* page table was accessed? */
+        pd[pd_offset].pt_mbz   = 0;   /* must be zero         */
+        pd[pd_offset].pt_fmb   = 0;   /* four MB pages?       */
+        pd[pd_offset].pt_global= 0;   /* global (ignored)     */
+        pd[pd_offset].pt_avail = 0;   /* for programmer's use     */
+        pd[pd_offset].pt_base  = pt;  /* location of page table?  */
 
     }
 
-
     // Get the address of the page table
-    page_table = page_dir[pd_offset].pd_base;
+    pt = pd[pd_offset].pt_base;
+
+    // Use backing store map to find the store and page offset
+    rc = bs_lookup_mapping(currpid, VA2VPNO(vaddr), &bsid, &bsoffset) {
+    if (rc == SYSERR) {
+        kprintf("pfint(): could not find mapping!\n");
+        return SYSERR;
+    }
+
+    // Get a pointer to the bs_t structure for the backing store
+    bsptr = &bs_tab[bsid];
+
+    // Get a free frame
+    frame = frm_alloc();
+    if (frame == NULL) {
+        kprintf("pfint(): could not find mapping!\n");
+        return SYSERR;
+    }
+
+    // Populate a little more information in the frame
+    frame->type   = FRM_BS;
+    frame->bsptr  = bsptr;
+    frame->bspage = bsoffset;
+
+    // Add the frame to head of the frame list within the bs_t struct
+    frame->next = bsptr->frames;
+    bsptr->frames = frame;
+
+    // Copy the page from the backing store into the frame
+    read_bs(FID2PA(frame->frmid), bsid, bsoffset);
+
+    // Update the page table
+    pt[pt_offset].p_pres  = 1;
+    pt[pt_offset].p_write = 1;
+    pt[pt_offset].p_base  = FID2PA(frame->frmid);
+
+    // Finally must invalidate TLB entries since page table contents 
+    // have changed. From intel vol III
+    //
+    // All of the (nonglobal) TLBs are automatically invalidated any
+    // time the CR3 register is loaded.
+    set_PDBR(pd);
+
+
+
+    // Increment reference count in inverted page table
 
     // To page in a faulted page do:
     //      - Use backing store map to find the store and page offset
@@ -82,14 +138,20 @@ SYSCALL pfint() {
     //          - update address portion to point to new frame
     //          - any other needed items
     // XXX
-    int backing_store;
-    int page
-    bsm_lookup(currpid, vaddr, &backing_store, &page);
+////int backing_store;
+////int page
+////bsm_lookup(currpid, vaddr, &backing_store, &page);
 
 
 
+////// In xmmap(), you will need to set up the mapping; e.g., 
+////// int bs_add_mapping(bs_id, currpid, vpno, npages). Once you 
+////// have a mapping, when a page fault takes place, you can search 
+////// bs_id and pagth through the map. Now you can allocate a new 
+////// frame for this backstore; e.g., frame_t *bs_get_frame(bs_id, pagth).
+////bs_get_frame();V
 
-    kprintf("To be implemented!\n");
+
     return OK;
 }
 

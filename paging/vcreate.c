@@ -10,12 +10,6 @@
 #include <paging.h>
 
 /*
-static unsigned long esp;
-*/
-
-LOCAL int newpid();
-
-/*
  * vcreate  - This call will create a new Xinu process. The difference
  * from create() is that the process's heap will be private and exist
  * in its virtual memory. The size of the heap (in number of pages) is 
@@ -75,33 +69,53 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
     // optional. But a private heap must be maintained).
     //
 
-
-    // XXX From TA
-    bs = get_free_bs(hsize);
+    // Perform normal process stuff! 
     pid = create(procaddr, ssize, priority, name, nargs, args);
-    ret = bs_add_mapping(BS2ID(bs), pid, 4096, hsize);
-    /*Initialize the memlist here.*/
-    proc->memlist.mnext = ...
+    pptr = &proctab[pid];
 
-    kprintf("To be implemented!\n");
-    return OK;
-}
 
-/*------------------------------------------------------------------------
- * newpid  --  obtain a new (free) process id
- *
- * XXX may not need this 
- *------------------------------------------------------------------------
- */
-LOCAL int newpid() {
-    int pid;            /* process id to return     */
-    int i;
-
-    for (i=0 ; i<NPROC ; i++) { /* check all NPROC slots    */
-        if ( (pid=nextproc--) <= 0)
-            nextproc = NPROC-1;
-        if (proctab[pid].pstate == PRFREE)
-            return(pid);
+    // Set up a new page directory for the process
+    pptr->pd = pd_alloc();
+    if (pptr->pd == NULL) {
+        kprintf("vcreate(): could not create new page directory for proc\n");
+        return SYSERR;
     }
-    return(SYSERR);
+
+    // Get a pointer to a free backing store
+    bsptr = get_free_bs(hsize);
+    if (bsptr == NULL) {
+        kprintf("vcreate(): could not find free backing store\n");
+        return SYSERR;
+    }
+
+    // populate the backing store with information
+    bsptr->status = BS_USED;
+    bsptr->isheap = 1;
+    bsptr->npages = hsize;
+    bsptr->maps   = NULL;
+    bsptr->frames = NULL;
+
+
+    // Add a mapping between this process and this backing 
+    // store. The vpno starts at 4096 (the first possible virtual
+    // page for this process).
+    rc = bs_add_mapping(bsptr->bsid, pid, 4096, hsize);
+    if (rc == SYSERR) {
+        kprintf("vcreate(): could not add mapping\n");
+        return SYSERR;
+    }
+
+    // Populate some info in the PCB
+    pptr->bsid  = bsptr->bsid;
+    pptr->hvpno = 4096;  
+    pptr->hsize = hsize;
+
+
+    // Initialize the free memory list for the virtual heap
+    struct mblock * vmptr;
+    pptr->vmemlist.mnext = vmptr = (struct mblock *) 4096*NBPG;
+    vmptr->mnext = 0;  // <--- A page fault will occur here
+    vmptr->mlen  = hsize*NBPG;
+
+    return OK;
 }

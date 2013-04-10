@@ -4,10 +4,11 @@
 #include <paging.h>
 
 /*
- * release the backing store with ID bs_id
+ * release the backing store with ID bsid
  */
-SYSCALL release_bs(bsd_t bs_id) {
+int release_bs(bsd_t bsid) {
 
-   return OK;
+    bs_free(bsid);
+    return OK;
 }
 

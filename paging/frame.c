@@ -32,24 +32,26 @@
 
 
 // Table with entries reprensenting frame
-fr_map_t frm_tab[NFRAMES];
+frame_t frm_tab[NFRAMES];
 
-/*-------------------------------------------------------------------------
+/*
  * init_frm_tab - initialize frm_tab
- *-------------------------------------------------------------------------
+ *
  */
-SYSCALL init_frm() {
+SYSCALL init_frmtab() {
     int i;
 
     for (i=0; i < NFRAMES; i++) {
-        frm_tab[i].fr_status   = FRM_UNMAPPED;/* MAPPED or UNMAPPED       */
-        frm_tab[i].fr_pid      = 0;           /* process id using this frame  */
-        frm_tab[i].fr_vpno     = 0;           /* corresponding virtual page no*/
-        frm_tab[i].fr_refcnt   = 0;           /* reference count      */
-        frm_tab[i].fr_type     = 0;           /* FR_DIR, FR_TBL, FR_PAGE  */
-        frm_tab[i].fr_dirty    = 0;
-        frm_tab[i].cookie      = 0;           /* private data structure   */
-        frm_tab[i].fr_loadtime = 0;           /* when the page is loaded  */
+        frm_tab[i].frmid  = i;        // frame id/index
+        frm_tab[i].status = FRM_FREE; // Current status
+        frm_tab[i].type   = FRM_FREE; // Type
+       // frm_tab[i].pid  = 0;      /* process id using this frame  */
+        frm_tab[i].refcnt = 0;        // reference count
+        frm_tab[i].age    = 0;        // when page is loaded (in ticks)
+       //frm_tab[i].dirty = 0;
+        frm_tab[i].list   = NULL;  
+        frm_tab[i].bsptr  = NULL;
+        frm_tab[i].bspage = 0;
     }
 
     return OK;
@@ -60,24 +62,33 @@ SYSCALL init_frm() {
 // 
 // int - returns the index of the free frame that was just reserved
 //
-int get_frm() {
+frame_t * frm_alloc() {
 
 
+
+    // Iterate over the frames
     for (i=0; i < NFRAMES; i++) {
-        if (frm_tab[i].fr_status == FRM_UNMAPPED) {
-            frm_tab[i].fr_status   = FRM_MAPPED;
-            frm_tab[i].fr_pid      = currpid;     /* process id using this frame  */
-            frm_tab[i].fr_vpno     = 0; //XXX     /* corresponding virtual page no*/
-            frm_tab[i].fr_refcnt   = 0;           /* reference count      */
-            frm_tab[i].fr_type     = 0; //XXX     /* FR_DIR, FR_TBL, FR_PAGE  */
-            frm_tab[i].fr_dirty    = 0;
-            frm_tab[i].cookie      = 0;           /* private data structure   */
-            frm_tab[i].fr_loadtime = 0;           /* when the page is loaded  */
-            return i;
+
+        // Is this frame free, if so use it
+        if (frm_tab[i].status == FRM_FREE) {
+
+            frm_tab[i].status = FRM_USED; // Current status
+            frm_tab[i].type   = type;     // Type
+           // frm_tab[i].pid  = 0;      /* process id using this frame  */
+            frm_tab[i].refcnt = 1;        // reference count
+            frm_tab[i].age    = 0; //XXX  // when page is loaded (in ticks)
+           //frm_tab[i].dirty = 0;
+
+            // XXX what to do for these?
+            frm_tab[i].list   = NULL;  
+            frm_tab[i].bsptr  = NULL;
+            frm_tab[i].bspage = 0;
+
+            return &frm_tab[i];
         }
     }
 
-    return SYSERR;
+    return NULL;
 
     // Your function to find a free frame should do the following:
     //  1. Search inverted page table for an empty frame. If one exists stop.
@@ -115,12 +126,15 @@ int get_frm() {
  * free_frm - free a frame 
  *-------------------------------------------------------------------------
  */
-SYSCALL free_frm(int i) {
+int frm_free(int frmid) {
 
-    if (i < 0 || i >= NFRAMES)
+    if (!IS_VALID_FRMID(frmid))
         return SYSERR;
 
-    frm_tab[i].fr_status = BSM_UNMAPPED;
+
+    // Any other cleanup that needs to be done?
+    //
+    frm_tab[frmid].status = FRM_FREE;
 
     return OK;
 }

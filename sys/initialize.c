@@ -231,6 +231,11 @@ sysinit()
     //      - before ctxsw() load CR3 with the process' PDBR
 
 
+    // Zero out values of backing stores
+
+    // Zero out values of frames
+    
+
     // Create and initialize the first four page tables. These map to
     // the first 4096 of memeory (physical memory) and are shared
     // among all processes.
@@ -239,13 +244,13 @@ sysinit()
         return SYSERR;
 
     // Create a page directory for the null process
-    page_dir = new_page_dir();
-    if (page_dir == SYSERR)
+    pd = pd_alloc();
+    if (pd == NULL)
         return SYSERR;
 
     // Set PDBR register (part of CR3) with value for PDBR of null
     // process
-    set_PDBR(page_dir);
+    set_PDBR(pd);
 
     // Install the page fault interrupt service routine.
     // XXX
@@ -299,7 +304,7 @@ sysinit()
     pptr->pargs = 0;
     pptr->pprio = 0;
 
-    pptr->pdbr  = page_dir; // Set the pdbr for the null proc
+    pptr->pd = pd; // Set the pdbr for the null proc
 
 
     currpid = NULLPROC;
