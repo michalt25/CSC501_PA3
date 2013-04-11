@@ -120,8 +120,6 @@ frame_t * frm_alloc() {
 
     // What to do if no free frames are available? 
     // evict one frame according to replacement policy
-  kprintf("To be implemented!\n");
-  return OK;
 }
 
 /*-------------------------------------------------------------------------

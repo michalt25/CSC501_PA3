@@ -113,7 +113,7 @@ pd_t * pd_alloc() {
         pd[i].pt_pres  = 1;       /* page table present?      */
         pd[i].pt_write = 1;       /* page is writable?        */
         pd[i].pt_avail = 1;       /* for programmer's use     */
-        pd[i].pt_base  = gpt[i];  /* location of page table?  */
+        pd[i].pt_base  = (unsigned int) gpt[i];  /* location of page table?  */
     }
 
     return pd;
@@ -126,7 +126,7 @@ int pd_free(pd_t * pd) {
     int i;
 
     for (i=0; i < NENTRIES; i++)
-        pt_free(&pd[i]);
+        pt_free((pt_t *)&pd[i]);
 
     int frmid = PA2FID((int)pd);
 
@@ -144,23 +144,24 @@ int pd_free(pd_t * pd) {
  */
 pt_t * pt_alloc() {
     int i;
-    int frame;
+    frame_t * frame;
     pt_t * pt;
 
     // Get a new frame of physical memory that will house the page table.
-    frame = frm_alloc(FRM_PT);
+    frame = frm_alloc();
     if (frame == NULL)
         return NULL;
 
     // fill out rest of frm_tab entry here
     // XXX
     //frm_tab[frame].type = FR_TBL;
+    frame->type = FRM_PT;
 
 
     // Get the address to the base of the physical memory frame that 
     // we just allocated. That address will be the base address of our
     // page table.
-    pt = (pt_t *) FID2PA(frame);
+    pt = (pt_t *) FID2PA(frame->frmid);
 
 
     // Initialize all entries in the page table

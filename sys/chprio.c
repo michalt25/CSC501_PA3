@@ -2,7 +2,9 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <proc.h>
+#include <q.h>
 
 /*------------------------------------------------------------------------
  * chprio  --  change the scheduling priority of a process

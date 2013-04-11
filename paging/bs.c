@@ -68,7 +68,7 @@ int bs_alloc(bsd_t bsid, int npages) {
     bsptr->maps   = NULL; // XXX 
     bsptr->frames = NULL; // XXX
 
-    return bsptr;
+    return OK;
 }
 
 
@@ -120,7 +120,7 @@ int bs_free(bsd_t bsid) {
     while (curr) {
         prev = curr;
         curr = curr->next;
-        freemem(prev, sizeof(bs_map_t));
+        freemem((struct mblock *)prev, sizeof(bs_map_t));
     }
 
     bsptr->status = BS_FREE;

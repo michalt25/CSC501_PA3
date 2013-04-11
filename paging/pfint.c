@@ -39,10 +39,10 @@ SYSCALL pfint() {
     // with the 32-bit address that generated the exception.
     //vaddr = (virt_addr_t) read_cr2();
     cr2 = read_cr2();
-    vaddr = &cr2;
+    vaddr = (virt_addr_t *)(&cr2);
 
     // Get the base page directory for the process
-    pd = get_PDBR();
+    pd = (pd_t *)(get_PDBR());
 
     // Is it a legal address (has the address been mapped) ?
     // If not then print error and kill process.
@@ -83,12 +83,12 @@ SYSCALL pfint() {
         pd[pd_offset].pt_fmb   = 0;   /* four MB pages?       */
         pd[pd_offset].pt_global= 0;   /* global (ignored)     */
         pd[pd_offset].pt_avail = 0;   /* for programmer's use     */
-        pd[pd_offset].pt_base  = pt;  /* location of page table?  */
+        pd[pd_offset].pt_base  = (unsigned int) pt;  /* location of page table?  */
 
     }
 
     // Get the address of the page table
-    pt = pd[pd_offset].pt_base;
+    pt = (pt_t *) pd[pd_offset].pt_base;
 
     // Use backing store map to find the store and page offset
     rc = bs_lookup_mapping(currpid, VA2VPNO(cr2), &bsid, &bsoffset);
@@ -117,19 +117,19 @@ SYSCALL pfint() {
     bsptr->frames = frame;
 
     // Copy the page from the backing store into the frame
-    read_bs(FID2PA(frame->frmid), bsid, bsoffset);
+    read_bs((void *)FID2PA(frame->frmid), bsid, bsoffset);
 
     // Update the page table
     pt[pt_offset].p_pres  = 1;
     pt[pt_offset].p_write = 1;
-    pt[pt_offset].p_base  = FID2PA(frame->frmid);
+    pt[pt_offset].p_base  = (unsigned int) FID2PA(frame->frmid);
 
     // Finally must invalidate TLB entries since page table contents 
     // have changed. From intel vol III
     //
     // All of the (nonglobal) TLBs are automatically invalidated any
     // time the CR3 register is loaded.
-    set_PDBR(pd);
+    set_PDBR((unsigned long)pd);
 
 
 

@@ -223,7 +223,7 @@ int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t * bsmptr) {
 
             // OP_DELETE! => Remove mapping
             bsptr->maps = curr->next;
-            freemem(curr, sizeof(bs_map_t));
+            freemem((struct mblock *)curr, sizeof(bs_map_t));
             return OK;
 
         }
@@ -242,7 +242,7 @@ int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t * bsmptr) {
 
                 // OP_DELETE! => Remove mapping
                 prev->next = curr->next;
-                freemem(curr, sizeof(bs_map_t));
+                freemem((struct mblock *)curr, sizeof(bs_map_t));
                 return OK;
 
             }

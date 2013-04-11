@@ -145,7 +145,7 @@ sysinit()
 
     /* initialize free memory list */
     /* PC version has to pre-allocate 640K-1024K "hole" */
-    if (maxaddr+1 > HOLESTART) {
+    if (((unsigned int)maxaddr+1) > HOLESTART) {
 
         // There is a "HOLE" in our free memory section that is
         // reserved for the PC usage. On either side of this HOLE

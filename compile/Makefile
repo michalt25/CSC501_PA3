@@ -3,7 +3,8 @@
 #
 
 INCLUDE = -I../h
-CFLAGS	= -march=i586 -fno-builtin -c -Wall -O ${DEFS} ${INCLUDE}
+#CFLAGS	= -march=i586 -fno-builtin -c -Wall -O ${DEFS} ${INCLUDE}
+CFLAGS	= -march=i586 -fno-builtin -c -Werror -O ${DEFS} ${INCLUDE}
 SDEFS	= -I../h
 
 CC      =       /usr/bin/gcc

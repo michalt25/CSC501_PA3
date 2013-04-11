@@ -13,12 +13,12 @@
 SYSCALL write_bs(char *src, bsd_t bsid, int page) {
 
     // Alternate implementation
-  //void * phy_addr = BS_BASE + 
-  //                  bsid*BS_UNIT_SIZE +
-  //                  page*NBPG;
+  //void * phy_addr = (void *)(BS_BASE + 
+  //                           bsid*BS_UNIT_SIZE +
+  //                           page*NBPG);
 
-   void * phy_addr = BS_BASE + bsid<<20 + page*NBPG;
-   bcopy((void*)src, phy_addr, NBPG);
+    void * phy_addr = (void *)(BS_BASE + bsid<<20 + page*NBPG);
+    bcopy((void*)src, phy_addr, NBPG);
 
 }
 

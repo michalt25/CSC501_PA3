@@ -3,6 +3,7 @@
 #include <conf.h>
 #include <i386.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <proc.h>
 #include <sem.h>
 #include <mem.h>

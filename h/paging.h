@@ -117,7 +117,7 @@ int pt_free(pt_t * pt);
 
 /* Prototypes for required memory API calls */
 SYSCALL xmmap(int, bsd_t, int);
-SYSCALL xunmap(int);
+SYSCALL xmunmap(int);
 SYSCALL vcreate(int *, int, int, int, char *, int, long, ...);
 WORD*   vgetmem(unsigned int);
 SYSCALL vfreemem(struct mblock*, unsigned int);
