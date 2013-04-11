@@ -3,6 +3,7 @@
 #include <conf.h>
 #include <i386.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <proc.h>
 #include <sem.h>
 #include <mem.h>
@@ -24,6 +25,12 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
     int  nargs;     /* number of args that follow  */
     long args;      /* arguments (treated like an array in the code) */
 {
+
+    int rc;
+    int pid;
+    bs_t * bsptr;
+    struct pentry * pptr;
+    struct mblock * vmptr;
 
 
     //XXX idea -
@@ -112,8 +119,7 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
 
 
     // Initialize the free memory list for the virtual heap
-    struct mblock * vmptr;
-    pptr->vmemlist.mnext = vmptr = (struct mblock *) 4096*NBPG;
+    pptr->vmemlist.mnext = vmptr = (struct mblock *) (4096*NBPG);
     vmptr->mnext = 0;  // <--- A page fault will occur here
     vmptr->mlen  = hsize*NBPG;
 

@@ -2,6 +2,7 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <proc.h>
 #include <paging.h>
 
@@ -30,7 +31,7 @@ SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
 
 
     // Add a mapping to the backing store mapping table
-    rc = bs_add_mapping(currpid, vpno, source, npages);
+    rc = bs_add_mapping(currpid, vpno, bsid, npages);
     if (rc == SYSERR) {
         kprintf("xmmap - could not create mapping!\n");
         return SYSERR;
@@ -50,7 +51,8 @@ SYSCALL xmunmap(int vpno) {
     int bsoffset;
     bsd_t bsid;
     bs_t * bsptr;
-    frame_t * frame;
+    frame_t * prev;
+    frame_t * curr;
     struct pentry * pptr;
 
 
@@ -63,7 +65,7 @@ SYSCALL xmunmap(int vpno) {
     }
 
     // Use backing store map to find the store and page offset
-    rc = bs_lookup_mapping(currpid, vpno, &bsid, &bsoffset) {
+    rc = bs_lookup_mapping(currpid, vpno, &bsid, &bsoffset);
     if (rc == SYSERR) {
         kprintf("xmunmap(): could not find mapping!\n");
         return SYSERR;
@@ -79,7 +81,7 @@ SYSCALL xmunmap(int vpno) {
     while (curr) {
 
         // Does this frame match?
-        if (frame->bspage == bsoffset) {
+        if (curr->bspage == bsoffset) {
 
             // Remove the frame from the list. Act differently
             // depending on if the frame is the head of the list or
@@ -87,7 +89,7 @@ SYSCALL xmunmap(int vpno) {
             if (prev == NULL)
                 bsptr->frames = curr->next;
             else
-                prev->next = curr->next
+                prev->next = curr->next;
 
             // Free the frame
             frm_free(curr->frmid);

@@ -3,6 +3,7 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 
 unsigned long tmp;
 

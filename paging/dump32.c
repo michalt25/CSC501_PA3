@@ -2,6 +2,7 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 
 /*-------------------------------------------------------------------------
  * dump32 - dump 32-bit long value

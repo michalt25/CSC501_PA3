@@ -1,20 +1,23 @@
 /* page.c - manage virtual pages */
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <proc.h>
 #include <paging.h>
+#include <frame.h>
 
 
 // The first four page tables represent pages of physical memory. This
 // memory exists for every process and is thus shared for every
 // process. 
-pt_t gpt[4] = { 0, 0, 0, 0 };
+pt_t * gpt[4] = { 0, 0, 0, 0 };
 
 
 // At system startup we will create 4 page tables that index
 // the first 4096 pages of memory (physical memory). 
 int init_page_tables() {
     int i,j;
+    pt_t * pt;
 
     // Create the first 4 page tables
     for (i=0; i<4; i++) {
@@ -66,10 +69,10 @@ int init_page_tables() {
 pd_t * pd_alloc() {
     int i;
     frame_t * frame;
-    pd_t pd[];
+    pd_t * pd;
 
     // Get a new frame of physical memory that will house the page directory.
-    frame = alloc_frame(FRM_PD);
+    frame = frm_alloc();
     if (frame == NULL) {
       kprintf("Could not get free frame!\n");
       return NULL;
@@ -77,13 +80,13 @@ pd_t * pd_alloc() {
 
     // fill out rest of frm_tab entry here
     // XXX
-    frm_tab[frame].type = FR_DIR;
+    frame->type = FRM_PD;
 
 
     // Get the address to the base of the physical memory frame that 
     // we just allocated. That will be the base address of our page
     // directory. 
-    pd = (pd_t *) FRMID_TO_ADDR(frame->frmid);
+    pd = (pd_t *) FID2PA(frame->frmid);
 
 
     // Initialize all entries in the page directory
@@ -120,12 +123,12 @@ pd_t * pd_alloc() {
  * pd_free - Free a page table directory
  */
 int pd_free(pd_t * pd) {
-
+    int i;
 
     for (i=0; i < NENTRIES; i++)
         pt_free(&pd[i]);
 
-    int frmid = PA2FID(pd);
+    int frmid = PA2FID((int)pd);
 
     frm_free(frmid);
 
@@ -142,7 +145,7 @@ int pd_free(pd_t * pd) {
 pt_t * pt_alloc() {
     int i;
     int frame;
-    pt_t pt[];
+    pt_t * pt;
 
     // Get a new frame of physical memory that will house the page table.
     frame = frm_alloc(FRM_PT);
@@ -183,25 +186,25 @@ pt_t * pt_alloc() {
  */
 int pt_free(pt_t * pt) {
 
-    int frmid = PA2FID(pt);
+    int frmid = PA2FID((int)pt);
 
     frm_free(frmid);
 
     return OK;
 }
 
-// Find an available entry in the page directory and return
-// the index into the page directory.
-//
-// If none are free return SYSERR
-int find_emtpy_pde(pd_t * page_dir) {
-    int i;
+////// Find an available entry in the page directory and return
+////// the index into the page directory.
+//////
+////// If none are free return SYSERR
+////int find_emtpy_pde(pd_t * page_dir) {
+////    int i;
 
-    // Find a free entry and return the index
-    for (i=0; i<NENTRIES; i++)
-        if (page_dir[i].pd_avail == 0)
-            return i;
+////    // Find a free entry and return the index
+////    for (i=0; i<NENTRIES; i++)
+////        if (page_dir[i].pd_avail == 0)
+////            return i;
 
-    // If we got here then there were no free entries
-    return SYSERR;
-}
+////    // If we got here then there were no free entries
+////    return SYSERR;
+////}

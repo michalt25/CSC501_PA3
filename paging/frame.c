@@ -3,6 +3,7 @@
 #include <kernel.h>
 #include <proc.h>
 #include <paging.h>
+#include <stdio.h>
 
 
 
@@ -49,8 +50,8 @@ SYSCALL init_frmtab() {
         frm_tab[i].refcnt = 0;        // reference count
         frm_tab[i].age    = 0;        // when page is loaded (in ticks)
        //frm_tab[i].dirty = 0;
-        frm_tab[i].list   = NULL;  
-        frm_tab[i].bsptr  = NULL;
+      //frm_tab[i].list   = NULL;  
+      //frm_tab[i].bsptr  = NULL;
         frm_tab[i].bspage = 0;
     }
 
@@ -63,6 +64,7 @@ SYSCALL init_frmtab() {
 // int - returns the index of the free frame that was just reserved
 //
 frame_t * frm_alloc() {
+    int i;
 
 
 
@@ -73,15 +75,15 @@ frame_t * frm_alloc() {
         if (frm_tab[i].status == FRM_FREE) {
 
             frm_tab[i].status = FRM_USED; // Current status
-            frm_tab[i].type   = type;     // Type
+          //frm_tab[i].type   = type;     // Type
            // frm_tab[i].pid  = 0;      /* process id using this frame  */
             frm_tab[i].refcnt = 1;        // reference count
             frm_tab[i].age    = 0; //XXX  // when page is loaded (in ticks)
            //frm_tab[i].dirty = 0;
 
             // XXX what to do for these?
-            frm_tab[i].list   = NULL;  
-            frm_tab[i].bsptr  = NULL;
+            //frm_tab[i].list   = NULL;  
+            //frm_tab[i].bsptr  = NULL;
             frm_tab[i].bspage = 0;
 
             return &frm_tab[i];

@@ -1,4 +1,6 @@
 // frame.h 
+#ifndef _FRAME_H_
+#define _FRAME_H_
 
 #define FRAME0      1024    /* zero-th frame        */
 #define NFRAMES     1024    /* number of frames     */
@@ -60,9 +62,6 @@
 #define FRM_BS 2
 
 
-// XXX evaluate this crap
-frame_t * alloc_frame(int type); 
-
 typedef struct _frame_t {
     int frmid;  // The frame id (index) 
     int status; // FRM_FREE - frame is not being used
@@ -91,13 +90,18 @@ typedef struct _frame_t {
 
 
     // Following are only used if status == FRM_BS
-    bs_t * bsptr;              // The backing store this frame maps to
+////bs_t * bsptr;              // The backing store this frame maps to
+    int    bsid;              // The backing store this frame maps to
     int    bspage;            // The page within the backing store
    // XXX don't know if i need this struct _frame_t * bs_next; // The list of all the frames for this bs
 
 } frame_t;
 
 
-// Table with entries reprensenting frame
-//extern fr_map_t frm_tab[];
+frame_t * frm_alloc(); 
+
+// Table with entries representing frame
 extern frame_t frm_tab[];
+
+
+#endif

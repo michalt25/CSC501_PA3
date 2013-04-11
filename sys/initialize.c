@@ -134,6 +134,7 @@ sysinit()
     struct  mblock  *mptr;
     SYSCALL pfintr();
     int rc;
+    pd_t * pd;
 
     
 

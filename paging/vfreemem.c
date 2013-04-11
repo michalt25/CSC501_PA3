@@ -2,8 +2,10 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <mem.h>
 #include <proc.h>
+#include <paging.h>
 
 //extern struct pentry proctab[];
 
@@ -11,11 +13,11 @@
  *  vfreemem - free a virtual memory block, returning it to vmemlist
  *
  */
-SYSCALL vfreemem(struct mblock* block, unsigned size) {
+SYSCALL vfreemem(struct mblock* block, unsigned int size) {
     STATWORD ps;    
     struct mblock * curr;
     struct mblock * next;
-    struct pentry pptr;
+    struct pentry * pptr;
     unsigned top;
 
     
@@ -46,7 +48,7 @@ SYSCALL vfreemem(struct mblock* block, unsigned size) {
     // freeing. Basically this is so we can insert our block
     // back into the list in sorted order.
     curr = &(pptr->vmemlist);
-    next = pptr->memlist.mnext;
+    next = curr->mnext;
     while((next != (struct mblock *) NULL) && (next < block)) { 
          curr=next;
          next=next->mnext;

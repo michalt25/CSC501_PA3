@@ -10,7 +10,7 @@
  * write one page of data from src to the backing store 
  * bs_id, page page.
  */
-SYSCALL write_bs(char *src, bsd_t bs_id, int page) {
+SYSCALL write_bs(char *src, bsd_t bsid, int page) {
 
     // Alternate implementation
   //void * phy_addr = BS_BASE + 

@@ -4,6 +4,7 @@
 #include <kernel.h>
 #include <paging.h>
 #include <proc.h>
+#include <stdio.h>
 
 
 
@@ -166,6 +167,99 @@
 ////}
 
 
+#define OP_FIND    100
+#define OP_DELETE  200
+
+
+#define VPNO_IN_MAP(vp, bsmptr)                      \
+                        (((vp) >= (bsmptr)->vpno) && \
+                        ((vp) < ((bsmptr)->vpno + (bsmptr)->npages)))
+
+
+/*
+ *  _bs_operate_on_mappings - Does one of two things
+ *
+ *      1 - Finds a mapping and returns a pointer to the 
+ *          mapping (bs_map_t structure). It returns this 
+ *          pointer at the memory location of the bsmptr argument.
+ *      2 - Find and delete a mapping completely. 
+ */
+int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t * bsmptr) {
+
+    int i;
+    bs_t * bsptr;
+    bs_map_t * prev;
+    bs_map_t * curr;
+
+    //XXX does the vpno have to match exactly or does the vpno
+    //simply have to be within range? For now I will assume it just
+    //has to be in range
+
+    // Validate op
+    if ((op != OP_FIND) && (op != OP_DELETE))
+        return SYSERR;
+
+    // Iterate over the lists of maps for each backing store. Each 
+    // list corresponds to a different backing store. 'i' will be the 
+    // backing store number.
+    for (i=0; i < NBS; i++) {
+
+        // Get a pointer to this backing store 'i'
+        bsptr = &bs_tab[i];
+
+        // These variables help us iterate over the mapping list.
+        prev = NULL;
+        curr = bsptr->maps;
+    
+        // First check the mapping at the head of the maps 
+        // to see if it matches.
+        if ((curr->pid == pid) && VPNO_IN_MAP(vpno, curr)) {
+
+            // Found it.. act accordingly
+            if (op == OP_FIND) {
+                bsmptr = curr;
+                return OK;
+            }
+
+            // OP_DELETE! => Remove mapping
+            bsptr->maps = curr->next;
+            freemem(curr, sizeof(bs_map_t));
+            return OK;
+
+        }
+
+        // Now iterate over the list and find the one and remove it
+        while (curr != NULL) {
+
+            // Is this the entry? 
+            if ((curr->pid == pid) && VPNO_IN_MAP(vpno, curr)) {
+
+                // Found it.. act accordingly
+                if (op == OP_FIND) {
+                    bsmptr = curr;
+                    return OK;
+                }
+
+                // OP_DELETE! => Remove mapping
+                prev->next = curr->next;
+                freemem(curr, sizeof(bs_map_t));
+                return OK;
+
+            }
+
+            // Move to next item in the list
+            prev = curr;
+            curr = curr->next;
+
+        }
+
+    }
+
+    // If we made it here then we did not find a mapping
+    return SYSERR;
+}
+
+
 
 /*
  * bs_add_mapping - Create a new bs_map_t structure and 
@@ -183,7 +277,7 @@ int bs_add_mapping(bsd_t bsid, int pid, int vpno, int npages) {
     bsmptr = (bs_map_t *) getmem(sizeof(bs_map_t));
     if (!bsmptr) {
         kprintf("Error when calling getmem()!\n");
-        return SYSERR
+        return SYSERR;
     }
 
     // XXX do i need to check status of backing store first?
@@ -206,12 +300,12 @@ int bs_add_mapping(bsd_t bsid, int pid, int vpno, int npages) {
 
 
 int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset) {
-
+    int rc;
     bs_map_t * bsmptr;
 
 
-    // Find the mapping using bs_operate_on_mapping function
-    rc = bs_operate_on_mapping(pid, vpno, OP_FIND, bsmptr);
+    // Find the mapping using _bs_operate_on_mapping function
+    rc = _bs_operate_on_mapping(pid, vpno, OP_FIND, bsmptr);
     if (rc == SYSERR) {
         kprintf("Could not find mapping!\n");
         return SYSERR;
@@ -291,8 +385,9 @@ int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset) {
  *                  it from the mapping list.
  */
 int bs_del_mapping(int pid, int vpno) {
+    int rc;
 
-    rc = bs_operate_on_mapping(pid, vpno, OP_DELETE, NULL);
+    rc = _bs_operate_on_mapping(pid, vpno, OP_DELETE, NULL);
     if (rc == SYSERR) {
         kprintf("Could not delete mapping!\n");
         return SYSERR;
@@ -343,97 +438,6 @@ int bs_del_mapping(int pid, int vpno) {
 
 ////}
 
-#define OP_FIND    100
-#define OP_DELETE  200
-
-
-#define VPNO_IN_MAP(vp, bsmptr)                      \
-                        (((vp) >= (bsmptr)->vpno) && \
-                        ((vp) < ((bsmptr)->vpno + (bsmptr)->npages)))
-
-
-/*
- *  bs_operate_on_mappings - Does one of two things
- *
- *      1 - Finds a mapping and returns a pointer to the 
- *          mapping (bs_map_t structure). It returns this 
- *          pointer at the memory location of the bsmptr argument.
- *      2 - Find and delete a mapping completely. 
- */
-int bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t * bsmptr) {
-
-    int i;
-    bs_t * bsptr;
-    bs_map_t * prev;
-    bs_map_t * curr;
-
-    //XXX does the vpno have to match exactly or does the vpno
-    //simply have to be within range? For now I will assume it just
-    //has to be in range
-
-    // Validate op
-    if ((op != OP_FIND) && (op != OP_DELETE))
-        return SYSERR;
-
-    // Iterate over the lists of maps for each backing store. Each 
-    // list corresponds to a different backing store. 'i' will be the 
-    // backing store number.
-    for (i=0; i < NBS; i++) {
-
-        // Get a pointer to this backing store 'i'
-        bsptr = &bs_tab[i];
-
-        // These variables help us iterate over the mapping list.
-        prev = NULL;
-        curr = bsptr->maps;
-    
-        // First check the mapping at the head of the maps 
-        // to see if it matches.
-        if ((curr->pid == pid) && VPNO_IN_MAP(vpno, curr)) {
-
-            // Found it.. act accordingly
-            if (op == OP_FIND) {
-                bsmptr = curr;
-                return OK;
-            }
-
-            // OP_DELETE! => Remove mapping
-            bsptr->maps = curr->next;
-            freemem(curr, sizeof(bs_map_t));
-            return OK;
-
-        }
-
-        // Now iterate over the list and find the one and remove it
-        while (curr != NULL) {
-
-            // Is this the entry? 
-            if ((curr->pid == pid) && VPNO_IN_MAP(vpno, curr)) {
-
-                // Found it.. act accordingly
-                if (op == OP_FIND) {
-                    bsmptr = curr;
-                    return OK;
-                }
-
-                // OP_DELETE! => Remove mapping
-                prev->next = curr->next;
-                freemem(curr, sizeof(bs_map_t));
-                return OK;
-
-            }
-
-            // Move to next item in the list
-            prev = curr;
-            curr = curr->next;
-
-        }
-
-    }
-
-    // If we made it here then we did not find a mapping
-    return SYSERR;
-}
 
 
 

@@ -1,4 +1,11 @@
 /* paging.h */
+
+#ifndef _PAGE_H_
+#define _PAGE_H_
+
+#include <bs.h>
+
+
 #define NBPG        4096    /* number of bytes per page */
 
 
@@ -6,8 +13,8 @@
 //
 // Basically there are NBPG bytes per page which means there
 // are NBPG addresses per page. 
-#define VADDR_TO_VPNO(vaddr) ((vaddr)/NBPG)
-#define VPNO_TO_VADDR(vpno) ((vpno)*NBPG)
+#define VA2VPNO(vaddr) ((vaddr) / NBPG)
+#define VPNO2VA(vpno) ((vpno)*NBPG)
 
 
 // Macros used to determine the memory eviction policy
@@ -75,19 +82,19 @@ typedef struct {
 
 
 
-// Structure representing a physical memory frame
-//      - Divide physical memory into ﬁxed-sized blocks 
-//        called frames 
-typedef struct {
-    int fr_status;            /* MAPPED or UNMAPPED       */
-    int fr_pid;               /* process id using this frame  */
-    int fr_vpno;              /* corresponding virtual page no*/
-    int fr_refcnt;            /* reference count      */
-    int fr_type;              /* FR_DIR, FR_TBL, FR_PAGE  */
-    int fr_dirty;
-    void *cookie;             /* private data structure   */
-    unsigned long int fr_loadtime;    /* when the page is loaded  */
-} fr_map_t;
+////// Structure representing a physical memory frame
+//////      - Divide physical memory into ﬁxed-sized blocks 
+//////        called frames 
+////typedef struct {
+////    int fr_status;            /* MAPPED or UNMAPPED       */
+////    int fr_pid;               /* process id using this frame  */
+////    int fr_vpno;              /* corresponding virtual page no*/
+////    int fr_refcnt;            /* reference count      */
+////    int fr_type;              /* FR_DIR, FR_TBL, FR_PAGE  */
+////    int fr_dirty;
+////    void *cookie;             /* private data structure   */
+////    unsigned long int fr_loadtime;    /* when the page is loaded  */
+////} fr_map_t;
 
 
 
@@ -97,16 +104,23 @@ typedef struct {
 // (real physical memory). The information in these page tables
 // is the same for all processes. We will use the following variable
 // gpt (global page tables) array to keep up with these page tables.
-extern pt_t gpt[];
+extern pt_t * gpt[];
 
+
+// pd and pt functions
+int init_page_tables();
+pd_t * pd_alloc();
+pt_t * pt_alloc();
+int pd_free(pd_t * pd);
+int pt_free(pt_t * pt);
 
 
 /* Prototypes for required memory API calls */
 SYSCALL xmmap(int, bsd_t, int);
 SYSCALL xunmap(int);
 SYSCALL vcreate(int *, int, int, int, char *, int, long, ...);
-WORD*   vgetmem(int);
-SYSCALL vfreemem(bsd_t, int);
+WORD*   vgetmem(unsigned int);
+SYSCALL vfreemem(struct mblock*, unsigned int);
 SYSCALL srpolicy(int);
 SYSCALL grpolicy();
 
@@ -117,3 +131,6 @@ SYSCALL release_bs(bsd_t);
 SYSCALL read_bs(char *, bsd_t, int);
 SYSCALL write_bs(char *, bsd_t, int);
 
+
+
+#endif

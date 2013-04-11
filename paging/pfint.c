@@ -2,7 +2,10 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <proc.h>
 #include <paging.h>
+#include <control_reg.h>
+
 
 
 
@@ -19,9 +22,10 @@
  * is not present.
  */
 SYSCALL pfint() {
-    vir_addr_t vaddr; 
+    virt_addr_t * vaddr; 
     pd_t * pd;
     pt_t * pt;
+    int rc;
     int pd_offset;
     int pt_offset;
     int pg_offset;
@@ -29,10 +33,13 @@ SYSCALL pfint() {
     bs_t * bsptr;
     int bsoffset;
     frame_t * frame;
+    unsigned long cr2;
 
     // Get the faulted address. The processor loads the CR2 register
     // with the 32-bit address that generated the exception.
-    vaddr = (vir_addr_t) read_cr2();
+    //vaddr = (virt_addr_t) read_cr2();
+    cr2 = read_cr2();
+    vaddr = &cr2;
 
     // Get the base page directory for the process
     pd = get_PDBR();
@@ -43,14 +50,14 @@ SYSCALL pfint() {
 
     // Get the Page Table # ([31:22], upper 10 bits) which is
     //  - AKA the offset into the page directory
-    pd_offset = vaddr.pd_offset;
+    pd_offset = vaddr->pd_offset;
 
     // Get the Page # ([21:12], next 10 bits)
     //  - AKA the offset into the page table
-    pt_offset = vaddr.pt_offset;
+    pt_offset = vaddr->pt_offset;
 
     // Get the offset into the page ([11:0]) 
-    pg_offset = vaddr.pg_offset;
+    pg_offset = vaddr->pg_offset;
 
 
 
@@ -84,7 +91,7 @@ SYSCALL pfint() {
     pt = pd[pd_offset].pt_base;
 
     // Use backing store map to find the store and page offset
-    rc = bs_lookup_mapping(currpid, VA2VPNO(vaddr), &bsid, &bsoffset) {
+    rc = bs_lookup_mapping(currpid, VA2VPNO(cr2), &bsid, &bsoffset);
     if (rc == SYSERR) {
         kprintf("pfint(): could not find mapping!\n");
         return SYSERR;
@@ -102,7 +109,7 @@ SYSCALL pfint() {
 
     // Populate a little more information in the frame
     frame->type   = FRM_BS;
-    frame->bsptr  = bsptr;
+    frame->bsid   = bsptr->bsid;
     frame->bspage = bsoffset;
 
     // Add the frame to head of the frame list within the bs_t struct

@@ -1,5 +1,10 @@
 // bs.h
 
+#ifndef _BS_H_
+#define _BS_H_
+
+#include <frame.h>
+
 // There are 8 backing stores
 #define NBS 8
 
@@ -33,17 +38,6 @@
 typedef unsigned int bsd_t;
 
 
-// Structure representing a backing store. 
-typedef struct {
-    bsd_t bsid;         // Which BS this is
-    int status;         // BS_FREE or BS_USED 
-    int isheap;         // is this bs used by heap?, if so can't be shared
-    int npages;         // number of pages in the store
-    bs_map_t * maps;    // where it is mapped
-    frame_t  * frames;  // the list of frames that maps this bs
-} bs_t;
-
-
 // Structure representing a backing store mapping. Each backing store
 // may be mapped into several address space. bs_map_t is used both by 
 // bs_t and processes
@@ -56,6 +50,19 @@ typedef struct _bs_map_t {
 } bs_map_t;
 
 
+// Structure representing a backing store. 
+typedef struct {
+    bsd_t bsid;         // Which BS this is
+    int status;         // BS_FREE or BS_USED 
+    int isheap;         // is this bs used by heap?, if so can't be shared
+    int npages;         // number of pages in the store
+    bs_map_t * maps;    // where it is mapped
+    frame_t  * frames;  // the list of frames that maps this bs
+} bs_t;
+
+
+
+
 // Table with entries representing backing stores
 //     - See bs.c
 extern bs_t bs_tab[];
@@ -63,11 +70,16 @@ extern bs_t bs_tab[];
 
 int init_bstab();
 
-int alloc_bs(bsd_t bsid, int npages);
+int bs_alloc(bsd_t bsid, int npages);
 
 bs_t * get_free_bs(int npages);
 
-void free_bs(bsd_t bsid);
+int bs_free(bsd_t bsid);
 
+int bs_add_mapping(bsd_t bsid, int pid, int vpno, int npages);
 
+int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset);
 
+int bs_del_mapping(int pid, int vpno);
+
+#endif

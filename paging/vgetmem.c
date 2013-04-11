@@ -2,6 +2,7 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <mem.h>
 #include <proc.h>
 #include <paging.h>
@@ -12,12 +13,12 @@
  * vgetmem:
  *     allocate virtual heap storage, returning lowest WORD address
  */
-WORD *vgetmem(unsigned nbytes) {
+WORD *vgetmem(unsigned int nbytes) {
     STATWORD ps;    
     struct mblock * curr;
     struct mblock * next;
     struct mblock * leftover;
-    struct pentry pptr;
+    struct pentry * pptr;
 
 
     // Make sure they passed us a valid value
@@ -41,7 +42,7 @@ WORD *vgetmem(unsigned nbytes) {
 
     // Iterate through the free list until a block is found
     curr = &(pptr->vmemlist);
-    next = pptr->memlist.mnext;
+    next = curr->mnext;
 
     while(next != (struct mblock *) NULL) { 
 

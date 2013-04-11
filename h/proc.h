@@ -1,5 +1,8 @@
 /* proc.h - isbadpid */
 
+#include <kernel.h>
+#include <paging.h>
+
 #ifndef _PROC_H_
 #define _PROC_H_
 

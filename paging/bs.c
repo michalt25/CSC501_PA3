@@ -4,6 +4,7 @@
 #include <kernel.h>
 #include <paging.h>
 #include <proc.h>
+#include <bs.h>
 
 
 
@@ -51,7 +52,6 @@ int init_bstab() {
  *            bsid. If bs bsid is not free return SYSERR
  */
 int bs_alloc(bsd_t bsid, int npages) {
-    int i;
     bs_t * bsptr;
 
     // Get pointer to backing store
@@ -65,7 +65,7 @@ int bs_alloc(bsd_t bsid, int npages) {
     bsptr->status = BS_USED;
     bsptr->isheap = 0; // XXX 
     bsptr->npages = npages;
-    bsptr->owners = NULL; // XXX 
+    bsptr->maps   = NULL; // XXX 
     bsptr->frames = NULL; // XXX
 
     return bsptr;
@@ -81,7 +81,7 @@ bs_t * get_free_bs(int npages) {
 
     // Make sure they gave us a valid # of pages
     if (npages >= MAX_BS_PAGES)
-        return NULL
+        return NULL;
 
     // Find the first free backing store with at least
     // npages free.

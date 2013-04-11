@@ -43,3 +43,4 @@ int monitor(unsigned short);
 int sscanf(char *, char *, ...);
 int rand();
 int srand(unsigned int);
+int bcopy(void *, void *, int);
