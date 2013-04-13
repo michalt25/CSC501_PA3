@@ -47,7 +47,9 @@ SYSCALL pfint() {
     vaddr = (virt_addr_t *)(&cr2);
 
 
+#if DUSTYDEBUG
     kprintf("Page Fault for address 0x%08x\tprocess %d\n", cr2, currpid);
+#endif
 
     // Get the base page directory for the process
     pptr = &proctab[currpid];

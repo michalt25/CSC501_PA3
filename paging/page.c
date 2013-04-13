@@ -52,11 +52,13 @@ int init_page_tables() {
             //
             pt[j].p_base  = i*NENTRIES + j; // location of page?
 
-
+#if DUSTYDEBUG
             if (j == 0) {
                 kprintf("Present? %d\t", pt[j].p_pres);
                 kprintf("Base is 0x%08x should be 0x%08x\n", pt[j].p_base, (i*NENTRIES + j));
             }
+#endif
+
 
         }
     }
@@ -121,9 +123,13 @@ pd_t * pd_alloc() {
         pd[i].pt_avail = 1;       /* for programmer's use     */
         pd[i].pt_base  = VA2VPNO((unsigned int)gpt[i]);  /* location of page table?  */
 
+
+#if DUSTYDEBUG
         kprintf("Page table %d is at location \tpage:%d\taddr:0x%08x..\t", 
                 i, VA2VPNO((unsigned int) gpt[i]), (unsigned int) gpt[i]);
         kprintf("1st page at page: %d\n", ((pt_t *)VPNO2VA(pd[i].pt_base))[0].p_base);
+#endif
+
     }
 
     return pd;

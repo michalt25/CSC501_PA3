@@ -223,16 +223,6 @@ int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t ** bsmptrptr) {
             // Found it.. act accordingly
             if (op == OP_FIND) {
                 *bsmptrptr = curr;
-    kprintf("XXX bsmptr bsid:%d pid:%d vpno:%d npages:%d\n",
-    (*bsmptrptr)->bsid,
-    (*bsmptrptr)->pid,
-    (*bsmptrptr)->vpno,
-    (*bsmptrptr)->npages);
-  //kprintf("XXX bsmptr bsid:%d pid:%d vpno:%d npages:%d\n",
-  //bsmptr->bsid,
-  //bsmptr->pid,
-  //bsmptr->vpno,
-  //bsmptr->npages);
                 return OK;
             }
 
@@ -286,7 +276,9 @@ int bs_add_mapping(bsd_t bsid, int pid, int vpno, int npages) {
     bs_t * bsptr;
     bs_map_t * bsmptr;
 
+#if DUSTYDEBUG
     kprintf("bs_add_mapping(%d, %d, %d, %d) for proc %d\n", bsid, pid, vpno, npages, pid);
+#endif
 
     // Get the pointer to the backing store.
     bsptr = &bs_tab[bsid];
@@ -321,7 +313,9 @@ int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset) {
     int rc;
     bs_map_t * bsmptr;
 
+#if DUSTYDEBUG
     kprintf("bs_lookup_mapping(%d, %d) for proc %d..\t", pid, vpno, pid);
+#endif
 
     // Find the mapping using _bs_operate_on_mapping function
     rc = _bs_operate_on_mapping(pid, vpno, OP_FIND, &bsmptr);
@@ -341,12 +335,14 @@ int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset) {
     *poffset = vpno - bsmptr->vpno;
 
 
+#if DUSTYDEBUG
     kprintf("found bsid:%d\toffset:%d\n", *bsid, *poffset);
     kprintf("bsmptr bsid:%d pid:%d vpno:%d npages:%d\n",
     bsmptr->bsid,
     bsmptr->pid,
     bsmptr->vpno,
     bsmptr->npages);
+#endif
 
     return OK;
 }

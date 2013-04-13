@@ -86,10 +86,12 @@ frame_t * frm_alloc() {
             //frm_tab[i].bsptr  = NULL;
             frm_tab[i].bspage = 0;
 
+#if DUSTYDEBUG
             kprintf("Allocating frame \ti:%d \tid:%d \taddr:0x%08x\n", 
                     i,
                     frm_tab[i].frmid,
                     FID2PA(i));
+#endif
             return &frm_tab[i];
         }
     }

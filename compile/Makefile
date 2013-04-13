@@ -1,9 +1,11 @@
 #
 #  Makefile for CSC501 Xinu.
 #
+# To get debug output compile using following command:
+#     make DEBUG=-DDUSTYDEBUG=1
 
 INCLUDE = -I../h
-CFLAGS	= -march=i586 -fno-builtin -c -Wall -O ${DEFS} ${INCLUDE}
+CFLAGS	= -march=i586 -fno-builtin -c -Wall -O ${DEFS} ${INCLUDE} ${DEBUG}
 #CFLAGS	= -march=i586 -fno-builtin -c -Werror -O ${DEFS} ${INCLUDE}
 SDEFS	= -I../h
 

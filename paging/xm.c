@@ -19,14 +19,15 @@ SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
     int rc;
 
 
+#if DUSTYDEBUG
     kprintf("xmmap(%d, %d, %d) for proc %d\n", vpno, bsid, npages, currpid);
+#endif
 
     /* sanity check ! */
-    if ((vpno < 4096)   || 
-        (bsid < 0)      || 
-        (bsid > MAX_ID) ||
-        (npages < 1)    || 
-        (npages >200)
+    if ((vpno < 4096)        || 
+        !IS_VALID_BSID(bsid) || 
+        (npages < 1)         || 
+        (npages > 200)
     ) {
         kprintf("xmmap call error: parameter error! \n");
         return SYSERR;
@@ -58,7 +59,9 @@ SYSCALL xmunmap(int vpno) {
     frame_t * curr;
     struct pentry * pptr;
 
+#if DUSTYDEBUG
     kprintf("xmunmap(%d) for proc %d\n", vpno, currpid);
+#endif
 
     // Get a pointer to the PCB for current proc
     pptr = &proctab[currpid];
