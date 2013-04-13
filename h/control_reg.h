@@ -8,7 +8,7 @@ unsigned long read_cr0();
 unsigned long read_cr2();
 unsigned long read_cr3();
 unsigned long read_cr4();
-unsigned long get_PDBR();
+//unsigned long get_PDBR();
 
 void write_cr0(unsigned long n);
 void write_cr3(unsigned long n);

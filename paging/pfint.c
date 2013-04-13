@@ -22,6 +22,7 @@
  * is not present.
  */
 SYSCALL pfint() {
+    STATWORD ps;    
     virt_addr_t * vaddr; 
     pd_t * pd;
     pt_t * pt;
@@ -34,6 +35,10 @@ SYSCALL pfint() {
     int bsoffset;
     frame_t * frame;
     unsigned long cr2;
+    struct pentry * pptr;
+
+    // Disable interrupts
+    disable(ps);
 
     // Get the faulted address. The processor loads the CR2 register
     // with the 32-bit address that generated the exception.
@@ -41,8 +46,12 @@ SYSCALL pfint() {
     cr2 = read_cr2();
     vaddr = (virt_addr_t *)(&cr2);
 
+
+    kprintf("Page Fault for address 0x%08x\tprocess %d\n", cr2, currpid);
+
     // Get the base page directory for the process
-    pd = (pd_t *)(get_PDBR());
+    pptr = &proctab[currpid];
+    pd   = pptr->pd;
 
     // Is it a legal address (has the address been mapped) ?
     // If not then print error and kill process.
@@ -70,6 +79,7 @@ SYSCALL pfint() {
         pt = pt_alloc();
         if (pt == NULL) {
             kprintf("Could not create page table!\n");
+            restore(ps);
             return SYSERR;
         }
 
@@ -83,17 +93,18 @@ SYSCALL pfint() {
         pd[pd_offset].pt_fmb   = 0;   /* four MB pages?       */
         pd[pd_offset].pt_global= 0;   /* global (ignored)     */
         pd[pd_offset].pt_avail = 0;   /* for programmer's use     */
-        pd[pd_offset].pt_base  = (unsigned int) pt;  /* location of page table?  */
+        pd[pd_offset].pt_base  = VA2VPNO(pt);  /* Page # where pt is located */
 
     }
 
     // Get the address of the page table
-    pt = (pt_t *) pd[pd_offset].pt_base;
+    pt = (pt_t *) VPNO2VA(pd[pd_offset].pt_base);
 
     // Use backing store map to find the store and page offset
     rc = bs_lookup_mapping(currpid, VA2VPNO(cr2), &bsid, &bsoffset);
     if (rc == SYSERR) {
         kprintf("pfint(): could not find mapping!\n");
+        restore(ps);
         return SYSERR;
     }
 
@@ -104,6 +115,7 @@ SYSCALL pfint() {
     frame = frm_alloc();
     if (frame == NULL) {
         kprintf("pfint(): could not find mapping!\n");
+        restore(ps);
         return SYSERR;
     }
 
@@ -122,14 +134,14 @@ SYSCALL pfint() {
     // Update the page table
     pt[pt_offset].p_pres  = 1;
     pt[pt_offset].p_write = 1;
-    pt[pt_offset].p_base  = (unsigned int) FID2PA(frame->frmid);
+    pt[pt_offset].p_base  = FID2VPNO(frame->frmid);
 
     // Finally must invalidate TLB entries since page table contents 
     // have changed. From intel vol III
     //
     // All of the (nonglobal) TLBs are automatically invalidated any
     // time the CR3 register is loaded.
-    set_PDBR((unsigned long)pd);
+    set_PDBR(VA2VPNO(pd));
 
 
 
@@ -159,6 +171,7 @@ SYSCALL pfint() {
 ////bs_get_frame();V
 
 
+    restore(ps);
     return OK;
 }
 

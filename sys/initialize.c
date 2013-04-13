@@ -143,6 +143,9 @@ sysinit()
     nextsem = NSEM-1;
     nextqueue = NPROC;      /* q[0..NPROC-1] are processes */
 
+
+    kprintf("here1\n");
+
     /* initialize free memory list */
     /* PC version has to pre-allocate 640K-1024K "hole" */
     if (((unsigned int)maxaddr+1) > HOLESTART) {
@@ -184,6 +187,7 @@ sysinit()
             NULLSTK);
     }
 
+    kprintf("here2\n");
 // The NULL process is somewhat of a special case, as it builds itself
 // in the function sysinit(). The NULL process should not have a
 // private heap(like any process created with create()).
@@ -235,8 +239,12 @@ sysinit()
     // Zero out values of backing stores
 
     // Zero out values of frames
+    rc = init_frmtab();
+    if (rc == SYSERR)
+        return SYSERR;
     
 
+    kprintf("here3\n");
     // Create and initialize the first four page tables. These map to
     // the first 4096 of memeory (physical memory) and are shared
     // among all processes.
@@ -244,19 +252,23 @@ sysinit()
     if (rc == SYSERR)
         return SYSERR;
 
+    kprintf("here4\n");
     // Create a page directory for the null process
     pd = pd_alloc();
     if (pd == NULL)
         return SYSERR;
 
+    kprintf("here5\n");
     // Set PDBR register (part of CR3) with value for PDBR of null
     // process
-    set_PDBR(pd);
+    set_PDBR(VA2VPNO(pd));
 
+    kprintf("here6\n");
     // Install the page fault interrupt service routine.
     // XXX
     set_evec(14, (unsigned long) pfintr);
 
+    kprintf("here7\n");
     // Enable paging (set bit 31 of CR0 register)
     enable_paging();
 
@@ -316,6 +328,7 @@ sysinit()
     }
 
     rdytail = 1 + (rdyhead=newqueue());/* initialize ready list */
+    kprintf("here8\n");
 
 
     return(OK);

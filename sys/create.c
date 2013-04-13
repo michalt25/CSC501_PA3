@@ -97,6 +97,14 @@ SYSCALL create(procaddr,ssize,priority,name,nargs,args)
     *--saddr = 0;       /* %edi */
     *pushsp = pptr->pesp = (unsigned long)saddr;
 
+
+    // Set up a new page directory for the process
+    pptr->pd = pd_alloc();
+    if (pptr->pd == NULL) {
+        kprintf("create(): could not create new page directory for proc\n");
+        return SYSERR;
+    }
+
     restore(ps);
 
     return(pid);

@@ -18,6 +18,8 @@
 int get_bs(bsd_t bsid, unsigned int npages) {
     bs_t * bsptr;
 
+    kprintf("get_bs(%d, %d) for proc %d\n", bsid, npages, currpid);
+
     // Make sure the bsid is appropriate
     if (!IS_VALID_BSID(bsid))
         return SYSERR;

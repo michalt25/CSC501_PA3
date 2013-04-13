@@ -58,11 +58,11 @@ SYSCALL init_frmtab() {
     return OK;
 }
 
-//
-// get_frm - get a free frame according page replacement policy.
-// 
-// int - returns the index of the free frame that was just reserved
-//
+/*
+ * frm_alloc - get a free frame according page replacement policy.
+ * 
+ * int - returns the index of the free frame that was just reserved
+ */
 frame_t * frm_alloc() {
     int i;
 
@@ -86,6 +86,10 @@ frame_t * frm_alloc() {
             //frm_tab[i].bsptr  = NULL;
             frm_tab[i].bspage = 0;
 
+            kprintf("Allocating frame \ti:%d \tid:%d \taddr:0x%08x\n", 
+                    i,
+                    frm_tab[i].frmid,
+                    FID2PA(i));
             return &frm_tab[i];
         }
     }

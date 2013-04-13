@@ -2,8 +2,10 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <proc.h>
 #include <q.h>
+#include <control_reg.h>
 
 unsigned long currSP;   /* REAL sp of current process */
 
@@ -20,7 +22,6 @@ int resched()
     STATWORD        PS;
     register struct pentry  *optr;  /* pointer to old process entry */
     register struct pentry  *nptr;  /* pointer to new process entry */
-    register int i;
 
     disable(PS);
     /* no switch needed if current process priority higher than next*/
@@ -90,7 +91,7 @@ int resched()
     // 5 - Context switch
     //      - every process has separate page directory
     //      - before ctxsw() load CR3 with the process' PDBR
-    set_PDBR(nptr->pd);
+    set_PDBR(VA2VPNO(nptr->pd));
 
     ctxsw(&optr->pesp, optr->pirmask, &nptr->pesp, nptr->pirmask);
 

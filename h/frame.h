@@ -6,8 +6,9 @@
 #define NFRAMES     1024    /* number of frames     */
 
 // Macro to convert frame ID/INDEX to physical mem address
-#define FID2PA(frmid) ((FRAME0 + (frmid))*NBPG)
-#define PA2FID(addr)  (((addr)/NBPG) - FRAME0)
+#define FID2PA(frmid)   ((FRAME0 + (frmid))*NBPG)
+#define FID2VPNO(frmid) (FRAME0 + (frmid))
+#define PA2FID(addr)    (((addr)/NBPG) - FRAME0)
 
 
 //XXX investigate these

@@ -13,18 +13,13 @@
 //
 // Basically there are NBPG bytes per page which means there
 // are NBPG addresses per page. 
-#define VA2VPNO(vaddr) ((vaddr) / NBPG)
-#define VPNO2VA(vpno) ((vpno)*NBPG)
+#define VA2VPNO(vaddr) ((int)(vaddr) / NBPG)
+#define VPNO2VA(vpno) ((int)(vpno)*NBPG)
 
 
 // Macros used to determine the memory eviction policy
 #define FIFO   3
 #define AGING  4
-
-
-
-
-
 
 // Structure for a page directory entry (PDE)
 typedef struct {
@@ -40,8 +35,6 @@ typedef struct {
     unsigned int pt_avail : 3;        /* for programmer's use     */
     unsigned int pt_base  : 20;       /* location of page table?  */
 } pd_t;
-
-
 
 
 // Structure for a page table entry (PTE)
@@ -62,23 +55,12 @@ typedef struct {
 } pt_t;
 
 
-
 // Structure representing a virtual address
 typedef struct {
     unsigned int pg_offset : 12;      /* page offset          */
     unsigned int pt_offset : 10;      /* page table offset        */
     unsigned int pd_offset : 10;      /* page directory offset    */
 } virt_addr_t;
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -95,8 +77,6 @@ typedef struct {
 ////    void *cookie;             /* private data structure   */
 ////    unsigned long int fr_loadtime;    /* when the page is loaded  */
 ////} fr_map_t;
-
-
 
 
 

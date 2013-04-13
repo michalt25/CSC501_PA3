@@ -18,6 +18,9 @@
 SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
     int rc;
 
+
+    kprintf("xmmap(%d, %d, %d) for proc %d\n", vpno, bsid, npages, currpid);
+
     /* sanity check ! */
     if ((vpno < 4096)   || 
         (bsid < 0)      || 
@@ -31,7 +34,7 @@ SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
 
 
     // Add a mapping to the backing store mapping table
-    rc = bs_add_mapping(currpid, vpno, bsid, npages);
+    rc = bs_add_mapping(bsid, currpid, vpno, npages);
     if (rc == SYSERR) {
         kprintf("xmmap - could not create mapping!\n");
         return SYSERR;
@@ -55,6 +58,7 @@ SYSCALL xmunmap(int vpno) {
     frame_t * curr;
     struct pentry * pptr;
 
+    kprintf("xmunmap(%d) for proc %d\n", vpno, currpid);
 
     // Get a pointer to the PCB for current proc
     pptr = &proctab[currpid];
@@ -70,6 +74,31 @@ SYSCALL xmunmap(int vpno) {
         kprintf("xmunmap(): could not find mapping!\n");
         return SYSERR;
     }
+
+
+// From TA
+
+////for (i = 0; i < map->npages; i++) {
+////    /*There is no mapping of this virtual page*/
+////    if (walk_pt(FP2PA(proc->pd), map->vpno + i, &walk) == SYSERR) {
+////        continue;
+////    }
+
+////    /*This virtual page is mapped to some free frame, 
+////     release the frame.*/
+////    bs_put_frame(id, i);
+////    free_pte(&walk);
+////}
+
+
+
+
+
+
+
+
+
+
 
     // Get a pointer to the bs_t structure for the backing store
     bsptr = &bs_tab[bsid];
@@ -112,7 +141,7 @@ SYSCALL xmunmap(int vpno) {
     //
     // All of the (nonglobal) TLBs are automatically invalidated any
     // time the CR3 register is loaded.
-    set_PDBR(pptr->pd);
+    set_PDBR(VA2VPNO(pptr->pd));
 
     return OK;
 }

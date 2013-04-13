@@ -184,7 +184,7 @@
  *          pointer at the memory location of the bsmptr argument.
  *      2 - Find and delete a mapping completely. 
  */
-int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t * bsmptr) {
+int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t ** bsmptrptr) {
 
     int i;
     bs_t * bsptr;
@@ -207,6 +207,11 @@ int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t * bsmptr) {
         // Get a pointer to this backing store 'i'
         bsptr = &bs_tab[i];
 
+        // If this backing store is not being used or if this store
+        // has no maps then move on
+        if (bsptr->status == BS_FREE || bsptr->maps == NULL)
+            continue;
+
         // These variables help us iterate over the mapping list.
         prev = NULL;
         curr = bsptr->maps;
@@ -217,13 +222,23 @@ int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t * bsmptr) {
 
             // Found it.. act accordingly
             if (op == OP_FIND) {
-                bsmptr = curr;
+                *bsmptrptr = curr;
+    kprintf("XXX bsmptr bsid:%d pid:%d vpno:%d npages:%d\n",
+    (*bsmptrptr)->bsid,
+    (*bsmptrptr)->pid,
+    (*bsmptrptr)->vpno,
+    (*bsmptrptr)->npages);
+  //kprintf("XXX bsmptr bsid:%d pid:%d vpno:%d npages:%d\n",
+  //bsmptr->bsid,
+  //bsmptr->pid,
+  //bsmptr->vpno,
+  //bsmptr->npages);
                 return OK;
             }
 
             // OP_DELETE! => Remove mapping
             bsptr->maps = curr->next;
-            freemem((struct mblock *)curr, sizeof(bs_map_t));
+            freemem((struct mblock *)curr, sizeof(bs_map_t)); //XXX should i use vfreemem?
             return OK;
 
         }
@@ -236,7 +251,8 @@ int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t * bsmptr) {
 
                 // Found it.. act accordingly
                 if (op == OP_FIND) {
-                    bsmptr = curr;
+                //  bsmptr = curr;
+                *bsmptrptr = curr;
                     return OK;
                 }
 
@@ -269,6 +285,8 @@ int _bs_operate_on_mapping(int pid, int vpno, int op, bs_map_t * bsmptr) {
 int bs_add_mapping(bsd_t bsid, int pid, int vpno, int npages) {
     bs_t * bsptr;
     bs_map_t * bsmptr;
+
+    kprintf("bs_add_mapping(%d, %d, %d, %d) for proc %d\n", bsid, pid, vpno, npages, pid);
 
     // Get the pointer to the backing store.
     bsptr = &bs_tab[bsid];
@@ -303,11 +321,12 @@ int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset) {
     int rc;
     bs_map_t * bsmptr;
 
+    kprintf("bs_lookup_mapping(%d, %d) for proc %d..\t", pid, vpno, pid);
 
     // Find the mapping using _bs_operate_on_mapping function
-    rc = _bs_operate_on_mapping(pid, vpno, OP_FIND, bsmptr);
+    rc = _bs_operate_on_mapping(pid, vpno, OP_FIND, &bsmptr);
     if (rc == SYSERR) {
-        kprintf("Could not find mapping!\n");
+        kprintf("\nCould not find mapping!\n");
         return SYSERR;
     }
 
@@ -320,6 +339,14 @@ int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset) {
     //
     //
     *poffset = vpno - bsmptr->vpno;
+
+
+    kprintf("found bsid:%d\toffset:%d\n", *bsid, *poffset);
+    kprintf("bsmptr bsid:%d pid:%d vpno:%d npages:%d\n",
+    bsmptr->bsid,
+    bsmptr->pid,
+    bsmptr->vpno,
+    bsmptr->npages);
 
     return OK;
 }

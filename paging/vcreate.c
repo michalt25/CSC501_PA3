@@ -81,12 +81,6 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
     pptr = &proctab[pid];
 
 
-    // Set up a new page directory for the process
-    pptr->pd = pd_alloc();
-    if (pptr->pd == NULL) {
-        kprintf("vcreate(): could not create new page directory for proc\n");
-        return SYSERR;
-    }
 
     // Get a pointer to a free backing store
     bsptr = get_free_bs(hsize);
