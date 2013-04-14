@@ -1,9 +1,10 @@
 // frame.h 
+
 #ifndef _FRAME_H_
 #define _FRAME_H_
 
 #define FRAME0      1024    /* zero-th frame        */
-#define NFRAMES     12      /* number of frames     */
+#define NFRAMES     20      /* number of frames     */
 
 // Macro to convert frame ID/INDEX to physical mem address
 #define FID2PA(frmid)   ((FRAME0 + (frmid))*NBPG)
@@ -83,9 +84,11 @@ typedef struct _frame_t {
         // Pages may belong to many lists.. lists of free frames, dirty
         // frames, clean frames, etc.. 
 
+    void * pte; // Keep up with what page table entry maps to 
+                // this frame
+
 
     // Following are only used if status == FRM_BS
-////bs_t * bsptr;              // The backing store this frame maps to
     int    bsid;              // The backing store this frame maps to
     int    bspage;            // The page within the backing store
     struct _frame_t * bs_next; // The list of all the frames for this bs

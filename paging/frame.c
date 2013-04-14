@@ -43,18 +43,40 @@ frame_t * frm_fifo_head;
  * free_frm - free a frame 
  *-------------------------------------------------------------------------
  */
-int frm_free(int frmid) {
+int frm_free(frame_t * frame) {
 
-    if (!IS_VALID_FRMID(frmid))
+    bs_t * bsptr;
+    pt_t * pte;
+
+    if (!IS_VALID_FRMID(frame->frmid))
         return SYSERR;
 
 #if DUSTYDEBUG
-    kprintf("frm_free(): Freeing frame %d\n", frmid);
+    kprintf("frm_free(): Freeing frame %d\n", frame->frmid);
 #endif 
+
+
+    // If this frame is mapped from a backing store
+    // then write the data back to the backing store
+    if (frame->type == FRM_BS) {
+
+        // Make sure the bsid is valid
+        if (!IS_VALID_BSID(frame->bsid))
+            return SYSERR;
+        
+        write_bs(FID2PA(frame->frmid), frame->bsid, frame->bspage);
+
+    }
+
+    // Invalidate the page table entry for this frame
+    if (frame->pte) {
+        pte = (pt_t *)frame->pte;
+        pte->p_pres = 0;
+    }
 
     // Any other cleanup that needs to be done?
     //
-    frm_tab[frmid].status = FRM_FREE;
+    frame->status = FRM_FREE;
 
     return OK;
 }
@@ -124,7 +146,7 @@ frame_t * _frm_evict() {
     while (curr) {
         if (curr->type == FRM_BS) {
             prev->fifo_next = curr->fifo_next;
-            frm_free(curr->frmid);
+            frm_free(curr);
             return curr;
         }
         prev = curr;
@@ -154,10 +176,11 @@ SYSCALL init_frmtab() {
        // frm_tab[i].pid  = 0;      /* process id using this frame  */
         frm_tab[i].refcnt = 0;        // reference count
         frm_tab[i].age    = 0;        // when page is loaded (in ticks)
-       //frm_tab[i].dirty = 0;
-      //frm_tab[i].list   = NULL;  
-      //frm_tab[i].bsptr  = NULL;
         frm_tab[i].bspage = 0;
+        frm_tab[i].bsid   = -1;
+        frm_tab[i].pte    = NULL;
+        frm_tab[i].fifo_next = NULL;
+        frm_tab[i].bs_next   = NULL;
     }
 
     return OK;
@@ -192,13 +215,11 @@ frame_t * frm_alloc() {
     frame->refcnt = 1;        // reference count
     frame->age    = 0; //XXX  // when page is loaded (in ticks)
    //frm_tab[i].dirty = 0;
-
-    // XXX what to do for these?
-    //frm_tab[i].list   = NULL;  
-    //frm_tab[i].bsptr  = NULL;
+    frame->bsid   = -1;
     frame->bspage = 0;
     frame->fifo_next = NULL;
     frame->bs_next = NULL;
+    frame->pte    = NULL;
 
     // Add frame to end of fifo. 
     if (frm_fifo_head == NULL) {
@@ -209,6 +230,9 @@ frame_t * frm_alloc() {
             curr = curr->fifo_next;
         curr->fifo_next = frame;
     }
+  
+  //frame->fifo_next = frm_fifo_head;
+  //frm_fifo_head = frame;
 
     return frame;
 

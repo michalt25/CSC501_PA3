@@ -124,7 +124,7 @@ SYSCALL xmunmap(int vpno) {
                 prev->bs_next = curr->bs_next;
 
             // Free the frame
-            frm_free(curr->frmid);
+            frm_free(curr);
         } 
 
         // Move to next frame in list

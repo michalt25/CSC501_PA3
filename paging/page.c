@@ -144,9 +144,9 @@ int pd_free(pd_t * pd) {
     for (i=0; i < NENTRIES; i++)
         pt_free((pt_t *)&pd[i]);
 
-    int frmid = PA2FID((int)pd);
+    //int frmid = PA2FID((int)pd);
 
-    frm_free(frmid);
+    frm_free(PA2FP(pd));
 
     return OK;
 }
@@ -203,9 +203,9 @@ pt_t * pt_alloc() {
  */
 int pt_free(pt_t * pt) {
 
-    int frmid = PA2FID((int)pt);
+    //int frmid = PA2FID((int)pt);
 
-    frm_free(frmid);
+    frm_free(PA2FP(pt));
 
     return OK;
 }

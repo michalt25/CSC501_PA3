@@ -11,6 +11,8 @@
 #include <q.h>
 #include <io.h>
 #include <paging.h>
+#include <bs.h>
+#include <frame.h>
 
 /*#define DETAIL */
 #define HOLESIZE    (600)   
@@ -237,6 +239,9 @@ sysinit()
 
 
     // Zero out values of backing stores
+    rc = init_bstab();
+    if (rc == SYSERR)
+        return SYSERR;
 
     // Zero out values of frames
     rc = init_frmtab();

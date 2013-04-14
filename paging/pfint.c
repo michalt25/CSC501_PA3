@@ -123,6 +123,7 @@ SYSCALL pfint() {
     }
 
     // Populate a little more information in the frame
+    frame->pte    = &pt[pt_offset];
     frame->type   = FRM_BS;
     frame->bsid   = bsptr->bsid;
     frame->bspage = bsoffset;
