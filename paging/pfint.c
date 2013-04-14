@@ -2,6 +2,7 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <proc.h>
 #include <paging.h>
 #include <control_reg.h>
@@ -34,6 +35,7 @@ SYSCALL pfint() {
     bs_t * bsptr;
     int bsoffset;
     frame_t * frame;
+    frame_t * ptframe;
     unsigned long cr2;
     struct pentry * pptr;
 
@@ -56,8 +58,15 @@ SYSCALL pfint() {
     pd   = pptr->pd;
 
     // Is it a legal address (has the address been mapped) ?
-    // If not then print error and kill process.
-    // XXX 
+    // Use backing store map to find the store and page offset
+    rc = bs_lookup_mapping(currpid, VA2VPNO(cr2), &bsid, &bsoffset);
+    if (rc == SYSERR) {
+        kprintf("pfint(): could not find mapping!\n");
+        goto error;
+    }
+
+    // Get a pointer to the bs_t structure for the backing store
+    bsptr = &bs_tab[bsid];
 
     // Get the Page Table # ([31:22], upper 10 bits) which is
     //  - AKA the offset into the page directory
@@ -73,7 +82,6 @@ SYSCALL pfint() {
 
 
     // If the Page Table does not exist create it.
-    // XXX
     if (pd[pd_offset].pt_pres != 1) {
 
         // Create a new page table and fill in its properties in
@@ -81,8 +89,7 @@ SYSCALL pfint() {
         pt = pt_alloc();
         if (pt == NULL) {
             kprintf("Could not create page table!\n");
-            restore(ps);
-            return SYSERR;
+            goto error;
         }
 
         pd[pd_offset].pt_pres  = 1;   /* page table present?      */
@@ -100,25 +107,19 @@ SYSCALL pfint() {
     }
 
     // Get the address of the page table
-    pt = (pt_t *) VPNO2VA(pd[pd_offset].pt_base);
+    pt = VPNO2VA(pd[pd_offset].pt_base);
 
-    // Use backing store map to find the store and page offset
-    rc = bs_lookup_mapping(currpid, VA2VPNO(cr2), &bsid, &bsoffset);
-    if (rc == SYSERR) {
-        kprintf("pfint(): could not find mapping!\n");
-        restore(ps);
-        return SYSERR;
-    }
+  //// Check to see if the page from the backing store
+  //// is already in physical memory. If so then bump
+  //// the refcnt and continue
+  //if (PA2FP(
 
-    // Get a pointer to the bs_t structure for the backing store
-    bsptr = &bs_tab[bsid];
 
     // Get a free frame
     frame = frm_alloc();
     if (frame == NULL) {
-        kprintf("pfint(): could not find mapping!\n");
-        restore(ps);
-        return SYSERR;
+        kprintf("pfint(): could not get free frame!\n");
+        goto error;
     }
 
     // Populate a little more information in the frame
@@ -127,7 +128,7 @@ SYSCALL pfint() {
     frame->bspage = bsoffset;
 
     // Add the frame to head of the frame list within the bs_t struct
-    frame->next = bsptr->frames;
+    frame->bs_next = bsptr->frames;
     bsptr->frames = frame;
 
     // Copy the page from the backing store into the frame
@@ -137,6 +138,12 @@ SYSCALL pfint() {
     pt[pt_offset].p_pres  = 1;
     pt[pt_offset].p_write = 1;
     pt[pt_offset].p_base  = FID2VPNO(frame->frmid);
+
+    // Increase the refcount in the page table's frame
+  //PA2FP(pt)->refcnt++;
+  //ptframe = &frm_tab[PA2FID(pt)];
+    ptframe = PA2FP(pt);
+    ptframe->refcnt++;
 
     // Finally must invalidate TLB entries since page table contents 
     // have changed. From intel vol III
@@ -175,6 +182,11 @@ SYSCALL pfint() {
 
     restore(ps);
     return OK;
+
+error:
+    kill(currpid);
+    restore(ps);
+    return SYSERR;
 }
 
 

@@ -3,19 +3,13 @@
 #define _FRAME_H_
 
 #define FRAME0      1024    /* zero-th frame        */
-#define NFRAMES     1024    /* number of frames     */
+#define NFRAMES     12      /* number of frames     */
 
 // Macro to convert frame ID/INDEX to physical mem address
 #define FID2PA(frmid)   ((FRAME0 + (frmid))*NBPG)
 #define FID2VPNO(frmid) (FRAME0 + (frmid))
-#define PA2FID(addr)    (((addr)/NBPG) - FRAME0)
-
-
-//XXX investigate these
-//#define FP2FN(frm)  (((frm) - frm_tab) + FRAME0)
-//#define FN2ID(fn)   ((fn) - FRAME0)
-//#define FP2PA(frm)  ((void*)(FP2FN(frm) * NBPG))
-
+#define PA2FID(addr)    (((int)(addr)/NBPG) - FRAME0)
+#define PA2FP(addr)     (&frm_tab[PA2FID((addr))])
 
 // Macro to verify the given frmid is valid
 #define IS_VALID_FRMID(frmid) (((frmid) < NFRAMES) && ((frmid) >= 0))
@@ -84,7 +78,7 @@ typedef struct _frame_t {
              // Used for page replacement policy AGING 
                 
 
-    struct _frame_t * next; // was originally called fifo (may be a clue)
+    struct _frame_t * fifo_next; // was originally called fifo (may be a clue)
         // XXX The following is a guess as to what this is needed for:
         // Pages may belong to many lists.. lists of free frames, dirty
         // frames, clean frames, etc.. 
@@ -94,7 +88,7 @@ typedef struct _frame_t {
 ////bs_t * bsptr;              // The backing store this frame maps to
     int    bsid;              // The backing store this frame maps to
     int    bspage;            // The page within the backing store
-   // XXX don't know if i need this struct _frame_t * bs_next; // The list of all the frames for this bs
+    struct _frame_t * bs_next; // The list of all the frames for this bs
 
 } frame_t;
 

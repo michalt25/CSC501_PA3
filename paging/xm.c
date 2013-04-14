@@ -119,9 +119,9 @@ SYSCALL xmunmap(int vpno) {
             // depending on if the frame is the head of the list or
             // not
             if (prev == NULL)
-                bsptr->frames = curr->next;
+                bsptr->frames = curr->bs_next;
             else
-                prev->next = curr->next;
+                prev->bs_next = curr->bs_next;
 
             // Free the frame
             frm_free(curr->frmid);
@@ -129,7 +129,7 @@ SYSCALL xmunmap(int vpno) {
 
         // Move to next frame in list
         prev = curr;
-        curr = curr->next;
+        curr = curr->bs_next;
     }
 
     // Remove mapping from maps list

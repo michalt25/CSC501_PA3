@@ -35,71 +35,41 @@
 // Table with entries reprensenting frame
 frame_t frm_tab[NFRAMES];
 
-/*
- * init_frm_tab - initialize frm_tab
- *
- */
-SYSCALL init_frmtab() {
-    int i;
+// Used for FIFO frame replacement policy
+frame_t * frm_fifo_head;
 
-    for (i=0; i < NFRAMES; i++) {
-        frm_tab[i].frmid  = i;        // frame id/index
-        frm_tab[i].status = FRM_FREE; // Current status
-        frm_tab[i].type   = FRM_FREE; // Type
-       // frm_tab[i].pid  = 0;      /* process id using this frame  */
-        frm_tab[i].refcnt = 0;        // reference count
-        frm_tab[i].age    = 0;        // when page is loaded (in ticks)
-       //frm_tab[i].dirty = 0;
-      //frm_tab[i].list   = NULL;  
-      //frm_tab[i].bsptr  = NULL;
-        frm_tab[i].bspage = 0;
-    }
+
+/*-------------------------------------------------------------------------
+ * free_frm - free a frame 
+ *-------------------------------------------------------------------------
+ */
+int frm_free(int frmid) {
+
+    if (!IS_VALID_FRMID(frmid))
+        return SYSERR;
+
+#if DUSTYDEBUG
+    kprintf("frm_free(): Freeing frame %d\n", frmid);
+#endif 
+
+    // Any other cleanup that needs to be done?
+    //
+    frm_tab[frmid].status = FRM_FREE;
 
     return OK;
 }
 
-/*
- * frm_alloc - get a free frame according page replacement policy.
- * 
- * int - returns the index of the free frame that was just reserved
+/*-------------------------------------------------------------------------
+ * _frm_evict - Find a frame to evict from memory
+ *-------------------------------------------------------------------------
  */
-frame_t * frm_alloc() {
+frame_t * _frm_evict() {
     int i;
+    frame_t * frame;
+    frame_t * prev;
+    frame_t * curr;
 
 
-
-    // Iterate over the frames
-    for (i=0; i < NFRAMES; i++) {
-
-        // Is this frame free, if so use it
-        if (frm_tab[i].status == FRM_FREE) {
-
-            frm_tab[i].status = FRM_USED; // Current status
-          //frm_tab[i].type   = type;     // Type
-           // frm_tab[i].pid  = 0;      /* process id using this frame  */
-            frm_tab[i].refcnt = 1;        // reference count
-            frm_tab[i].age    = 0; //XXX  // when page is loaded (in ticks)
-           //frm_tab[i].dirty = 0;
-
-            // XXX what to do for these?
-            //frm_tab[i].list   = NULL;  
-            //frm_tab[i].bsptr  = NULL;
-            frm_tab[i].bspage = 0;
-
-#if DUSTYDEBUG
-            kprintf("Allocating frame \ti:%d \tid:%d \taddr:0x%08x\n", 
-                    i,
-                    frm_tab[i].frmid,
-                    FID2PA(i));
-#endif
-            return &frm_tab[i];
-        }
-    }
-
-    return NULL;
-
-    // Your function to find a free frame should do the following:
-    //  1. Search inverted page table for an empty frame. If one exists stop.
     //  2. Else, Pick a page to replace.
     //  3. Using the inverted page table, get vp, the virtual page number of the page to be replaced.
     //  4. Let a be vp*4096 (the first virtual address on page vp).
@@ -122,28 +92,130 @@ frame_t * frm_alloc() {
     //            something is wrong. Print an error message and kill the 
     //            process pid.
     //          - Write the page back to the backing store.
+    
+    // Iterate over the frames
+    for (i=0; i < NFRAMES; i++) {
 
+        frame = &frm_tab[i];
 
-    // What to do if no free frames are available? 
-    // evict one frame according to replacement policy
+        // Is this frame free, if so use it
+        if (frame->status == FRM_FREE)
+            return frame;
+
+        // Is this frames refcnt 0? If so use it
+        if (frame->refcnt == 0) {
+            frm_free(frame);
+            return frame;
+        }
+
+    }
+
+#if DUSTYDEBUG
+    kprintf("_frm_evict(): Evicting frame using FIFO replacement\n");
+#endif 
+
+    // If we made it here then we found no candidates and 
+    // we must force one page out of memory to free up space.
+    //
+    // Release the frame closest to the head of the fifo that 
+    // isn't a page directory or page table
+    prev = NULL;
+    curr = frm_fifo_head;
+    while (curr) {
+        if (curr->type == FRM_BS) {
+            prev->fifo_next = curr->fifo_next;
+            frm_free(curr->frmid);
+            return curr;
+        }
+        prev = curr;
+        curr = curr->fifo_next;
+    }
+
+    // If we made it here then there was a problem
+    return NULL;
 }
 
-/*-------------------------------------------------------------------------
- * free_frm - free a frame 
- *-------------------------------------------------------------------------
+/*
+ * init_frm_tab - initialize frm_tab
+ *
  */
-int frm_free(int frmid) {
+SYSCALL init_frmtab() {
+    int i;
 
-    if (!IS_VALID_FRMID(frmid))
-        return SYSERR;
+    // To start out the FIFO frame replacement policy 
+    // head pointer will be null;
+    frm_fifo_head = NULL;
 
-
-    // Any other cleanup that needs to be done?
-    //
-    frm_tab[frmid].status = FRM_FREE;
+    // Initialize all of the information in the frame table
+    for (i=0; i < NFRAMES; i++) {
+        frm_tab[i].frmid  = i;        // frame id/index
+        frm_tab[i].status = FRM_FREE; // Current status
+        frm_tab[i].type   = FRM_FREE; // Type
+       // frm_tab[i].pid  = 0;      /* process id using this frame  */
+        frm_tab[i].refcnt = 0;        // reference count
+        frm_tab[i].age    = 0;        // when page is loaded (in ticks)
+       //frm_tab[i].dirty = 0;
+      //frm_tab[i].list   = NULL;  
+      //frm_tab[i].bsptr  = NULL;
+        frm_tab[i].bspage = 0;
+    }
 
     return OK;
 }
+
+/*
+ * frm_alloc - get a free frame according page replacement policy.
+ * 
+ */
+frame_t * frm_alloc() {
+    int i;
+    frame_t * frame;
+    frame_t * curr;
+
+
+    frame = _frm_evict();
+    if (frame == NULL) {
+        kprintf("frm_alloc(): failed to find/evict frame\n"); 
+        return NULL;
+    }
+
+#if DUSTYDEBUG
+    kprintf("Allocating frame \tid:%d \taddr:0x%08x\n", 
+            frame->frmid,
+            FID2PA(frame->frmid));
+#endif
+
+    // Populate data in the frame_t table
+    frame->status = FRM_USED; // Current status
+  //frm_tab[i].type   = type;     // Type
+   // frm_tab[i].pid  = 0;      /* process id using this frame  */
+    frame->refcnt = 1;        // reference count
+    frame->age    = 0; //XXX  // when page is loaded (in ticks)
+   //frm_tab[i].dirty = 0;
+
+    // XXX what to do for these?
+    //frm_tab[i].list   = NULL;  
+    //frm_tab[i].bsptr  = NULL;
+    frame->bspage = 0;
+    frame->fifo_next = NULL;
+    frame->bs_next = NULL;
+
+    // Add frame to end of fifo. 
+    if (frm_fifo_head == NULL) {
+        frm_fifo_head = frame;
+    } else {
+        curr = frm_fifo_head;
+        while (curr->fifo_next != NULL)
+            curr = curr->fifo_next;
+        curr->fifo_next = frame;
+    }
+
+    return frame;
+
+}
+
+
+
 
 
 
