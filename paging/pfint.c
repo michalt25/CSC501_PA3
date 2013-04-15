@@ -31,9 +31,9 @@ SYSCALL pfint() {
     int pd_offset;
     int pt_offset;
     int pg_offset;
-    bsd_t bsid;
-    bs_t * bsptr;
     int bsoffset;
+    bs_t * bsptr;
+    bs_map_t * bsmptr;
     frame_t * frame;
     frame_t * ptframe;
     unsigned long cr2;
@@ -59,14 +59,17 @@ SYSCALL pfint() {
 
     // Is it a legal address (has the address been mapped) ?
     // Use backing store map to find the store and page offset
-    rc = bs_lookup_mapping(currpid, VA2VPNO(cr2), &bsid, &bsoffset);
-    if (rc == SYSERR) {
+    bsmptr = bs_lookup_mapping(currpid, VA2VPNO(cr2));
+    if (bsmptr == NULL) {
         kprintf("pfint(): could not find mapping!\n");
         goto error;
     }
 
+    // Get the page offset of the frame from beginning of bs
+    bsoffset = VA2VPNO(cr2) - bsmptr->vpno;
+
     // Get a pointer to the bs_t structure for the backing store
-    bsptr = &bs_tab[bsid];
+    bsptr = &bs_tab[bsmptr->bsid];
 
     // Get the Page Table # ([31:22], upper 10 bits) which is
     //  - AKA the offset into the page directory
@@ -133,7 +136,7 @@ SYSCALL pfint() {
     bsptr->frames = frame;
 
     // Copy the page from the backing store into the frame
-    read_bs((void *)FID2PA(frame->frmid), bsid, bsoffset);
+    read_bs((void *)FID2PA(frame->frmid), bsmptr->bsid, bsoffset);
 
     // Update the page table
     pt[pt_offset].p_pres  = 1;
@@ -141,8 +144,6 @@ SYSCALL pfint() {
     pt[pt_offset].p_base  = FID2VPNO(frame->frmid);
 
     // Increase the refcount in the page table's frame
-  //PA2FP(pt)->refcnt++;
-  //ptframe = &frm_tab[PA2FID(pt)];
     ptframe = PA2FP(pt);
     ptframe->refcnt++;
 
@@ -154,35 +155,9 @@ SYSCALL pfint() {
     set_PDBR(VA2VPNO(pd));
 
 
-
-    // Increment reference count in inverted page table
-
-    // To page in a faulted page do:
-    //      - Use backing store map to find the store and page offset
-    //      - Increment ref count in inverted page table
-    //      - Get a free frame
-    //      - Copy that page from backing store into frame
-    //      - Update page table 
-    //          - mark as present
-    //          - update address portion to point to new frame
-    //          - any other needed items
-    // XXX
-////int backing_store;
-////int page
-////bsm_lookup(currpid, vaddr, &backing_store, &page);
-
-
-
-////// In xmmap(), you will need to set up the mapping; e.g., 
-////// int bs_add_mapping(bs_id, currpid, vpno, npages). Once you 
-////// have a mapping, when a page fault takes place, you can search 
-////// bs_id and pagth through the map. Now you can allocate a new 
-////// frame for this backstore; e.g., frame_t *bs_get_frame(bs_id, pagth).
-////bs_get_frame();V
-
-
     restore(ps);
     return OK;
+
 
 error:
     kill(currpid);

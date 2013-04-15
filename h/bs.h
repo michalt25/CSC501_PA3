@@ -78,7 +78,7 @@ int bs_free(bsd_t bsid);
 
 int bs_add_mapping(bsd_t bsid, int pid, int vpno, int npages);
 
-int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset);
+bs_map_t * bs_lookup_mapping(int pid, int vpno);
 
 int bs_del_mapping(int pid, int vpno);
 

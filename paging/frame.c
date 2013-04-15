@@ -77,6 +77,13 @@ int frm_free(frame_t * frame) {
     // Any other cleanup that needs to be done?
     //
     frame->status = FRM_FREE;
+    frame->type   = FRM_FREE;
+    frame->refcnt = 0;
+    frame->age    = 0;
+    frame->pte    = NULL;
+    frame->bsid   = -1;
+    frame->bspage = 0;
+    frame->bs_next= NULL;
 
     return OK;
 }

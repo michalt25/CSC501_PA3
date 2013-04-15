@@ -32,6 +32,8 @@ SYSCALL kill(int pid)
     // 1. All frames which currently hold any of its pages should be written to
     //    the backing store and be freed.
     // 2. All of it's mappings should be removed from the backing store map.
+    //bs_cleanproc(currpid);
+
     // 3. The backing stores for its heap (and stack if have chosen to implement
     //    a private stack) should be released (remember backing stores
     //    allocated by a process should persist unless the process explicitly

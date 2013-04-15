@@ -22,7 +22,7 @@ int main() {
 
 	get_bs(bs, 200);
 
-	if (xmmap(i, bs, 200) == SYSERR) {
+    if (xmmap(i, bs, 200) == SYSERR) {
 		kprintf("xmmap call failed\n");
 		return 0;
 	}

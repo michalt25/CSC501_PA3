@@ -175,6 +175,67 @@
                         (((vp) >= (bsmptr)->vpno) && \
                         ((vp) < ((bsmptr)->vpno + (bsmptr)->npages)))
 
+    // 
+    // When a process dies the following should happen.
+    // 1. All frames which currently hold any of its pages should be written to
+    //    the backing store and be freed.
+    // 2. All of it's mappings should be removed from the backing store map.
+int bs_cleanproc(int pid) {
+
+    int i;
+    bs_t * bsptr;
+    bs_map_t * prev;
+    bs_map_t * curr;
+
+    // Iterate over the lists of maps for each backing store. Each 
+    // list corresponds to a different backing store. 'i' will be the 
+    // backing store number.
+    for (i=0; i < NBS; i++) {
+
+        // Get a pointer to this backing store 'i'
+        bsptr = &bs_tab[i];
+
+        // If this backing store is not being used or if this store
+        // has no maps then move on
+        if (bsptr->status == BS_FREE || bsptr->maps == NULL)
+            continue;
+
+        // These variables help us iterate over the mapping list.
+        prev = NULL;
+        curr = bsptr->maps;
+
+        // Now iterate over the list and find the one and remove it
+        while (curr != NULL) {
+
+            // Does this mapping belong to proc pid?
+            if (curr->pid == pid) {
+
+                // If this is the head of the list act accordingly
+                if (prev == NULL) {
+                    bsptr->maps = curr->next;
+                    freemem((struct mblock *)curr, sizeof(bs_map_t));
+                    curr = bsptr->maps;
+                } else {
+                    prev->next = curr->next;
+                    freemem((struct mblock *)curr, sizeof(bs_map_t));
+                    curr = prev->next;
+                }
+
+            } else {
+
+                // Move to next item in the list
+                prev = curr;
+                curr = curr->next;
+
+            }
+
+        }
+
+    }
+
+    // If we made it here then we did not find a mapping
+    return OK;
+}
 
 /*
  *  _bs_operate_on_mappings - Does one of two things
@@ -309,7 +370,7 @@ int bs_add_mapping(bsd_t bsid, int pid, int vpno, int npages) {
 
 
 
-int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset) {
+bs_map_t * bs_lookup_mapping(int pid, int vpno) {
     int rc;
     bs_map_t * bsmptr;
 
@@ -321,30 +382,20 @@ int bs_lookup_mapping(int pid, int vpno, bsd_t * bsid, int * poffset) {
     rc = _bs_operate_on_mapping(pid, vpno, OP_FIND, &bsmptr);
     if (rc == SYSERR) {
         kprintf("\nCould not find mapping!\n");
-        return SYSERR;
+        return NULL;
     }
 
-    // bsmptr now points to the mapping. We can get the backing
-    // store id from this
-    *bsid = bsmptr->bsid;
-
-    // Need to do just a little more work to make sure that vpno
-    // correctly matches the vpno of a mapping 
-    //
-    //
-    *poffset = vpno - bsmptr->vpno;
 
 
 #if DUSTYDEBUG
-    kprintf("found bsid:%d\toffset:%d\n", *bsid, *poffset);
-    kprintf("bsmptr bsid:%d pid:%d vpno:%d npages:%d\n",
+    kprintf("found bsid:%d pid:%d vpno:%d npages:%d\n",
     bsmptr->bsid,
     bsmptr->pid,
     bsmptr->vpno,
     bsmptr->npages);
 #endif
 
-    return OK;
+    return bsmptr;
 }
 
 ////    //int vpno = VADDR_TO_VPNO(vaddr);

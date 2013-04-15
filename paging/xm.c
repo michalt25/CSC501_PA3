@@ -52,9 +52,8 @@ SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
  */
 SYSCALL xmunmap(int vpno) {
     int rc;
-    int bsoffset;
-    bsd_t bsid;
     bs_t * bsptr;
+    bs_map_t * bsmptr;
     frame_t * prev;
     frame_t * curr;
     struct pentry * pptr;
@@ -72,39 +71,15 @@ SYSCALL xmunmap(int vpno) {
     }
 
     // Use backing store map to find the store and page offset
-    rc = bs_lookup_mapping(currpid, vpno, &bsid, &bsoffset);
-    if (rc == SYSERR) {
+    bsmptr = bs_lookup_mapping(currpid, vpno);
+    if (bsmptr == NULL) {
         kprintf("xmunmap(): could not find mapping!\n");
         return SYSERR;
     }
 
 
-// From TA
-
-////for (i = 0; i < map->npages; i++) {
-////    /*There is no mapping of this virtual page*/
-////    if (walk_pt(FP2PA(proc->pd), map->vpno + i, &walk) == SYSERR) {
-////        continue;
-////    }
-
-////    /*This virtual page is mapped to some free frame, 
-////     release the frame.*/
-////    bs_put_frame(id, i);
-////    free_pte(&walk);
-////}
-
-
-
-
-
-
-
-
-
-
-
     // Get a pointer to the bs_t structure for the backing store
-    bsptr = &bs_tab[bsid];
+    bsptr = &bs_tab[bsmptr->bsid];
 
     // Go through the frames that this bs has and release the frame
     // that corresponds to this virtual frame.
@@ -113,18 +88,22 @@ SYSCALL xmunmap(int vpno) {
     while (curr) {
 
         // Does this frame match?
-        if (curr->bspage == bsoffset) {
+        if (curr->bspage < bsmptr->npages) {
 
             // Remove the frame from the list. Act differently
             // depending on if the frame is the head of the list or
             // not
-            if (prev == NULL)
+            if (prev == NULL) {
                 bsptr->frames = curr->bs_next;
-            else
+                frm_free(curr);
+                curr = bsptr->frames;
+            } else {
                 prev->bs_next = curr->bs_next;
+                frm_free(curr);
+                curr = prev->bs_next;
+            }
 
-            // Free the frame
-            frm_free(curr);
+            continue;
         } 
 
         // Move to next frame in list
