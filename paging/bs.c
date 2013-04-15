@@ -22,7 +22,7 @@ int init_bstab() {
         bs_tab[i].bsid   = i; // Never needs to be set again
         bs_tab[i].status = BS_FREE;
         bs_tab[i].isheap = 0;
-        bs_tab[i].npages = 0;
+        bs_tab[i].npages = MAX_BS_PAGES;
         bs_tab[i].maps   = NULL;
         bs_tab[i].frames = NULL;
 
@@ -31,21 +31,6 @@ int init_bstab() {
     return OK;
 }
 
-////SYSCALL init_bs(
-////                bs_t * bsptr, 
-////                  int status, 
-////                  int isheap, 
-////             bs_map_t * maps,
-////            frame_t * frames,
-////) {
-
-////    bsptr.status = status;
-////    bsptr.isheap = isheap;
-////    bsptr.npages = npages;
-////    bsptr.maps   = maps;
-////    bsptr.frames = frames;
-////    return OK;
-////}
 
 /*
  * bs_alloc - Allocate a new backing store identified by
@@ -88,16 +73,10 @@ bs_t * get_free_bs(int npages) {
     for (i=0; i < NBS; i++)
         if (bs_tab[i].status == BS_FREE)
             if (bs_tab[i].npages >= npages)
-                break;
+                return &bs_tab[i];
 
-    // If i==NBS then we did not find one
-    if (i == NBS) {
-        kprintf("Could not find free backing store\n");
-        return NULL;
-    }
-
-    // Return a pointer to the backing store entry
-    return &bs_tab[i];
+    kprintf("Could not find free backing store\n");
+    return NULL;
 
 }
 

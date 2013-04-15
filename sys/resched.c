@@ -92,6 +92,9 @@ int resched()
     //      - every process has separate page directory
     //      - before ctxsw() load CR3 with the process' PDBR
     set_PDBR(VA2VPNO(nptr->pd));
+#if DUSTYDEBUG
+    kprintf("switching to process %d\n", (nptr - proctab));
+#endif
 
     ctxsw(&optr->pesp, optr->pirmask, &nptr->pesp, nptr->pirmask);
 

@@ -26,66 +26,26 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
     long args;      /* arguments (treated like an array in the code) */
 {
 
+    STATWORD ps;    
     int rc;
     int pid;
     bs_t * bsptr;
     struct pentry * pptr;
-    struct mblock * vmptr;
+    struct mblock * memblock;
 
-
-    //XXX idea -
-    // call "create()" to do normal stuff and then set up virtual mem
-    // stuff here and then return 
-    //
-    //
-    // set following data from process control block
-    
-    //  unsigned long pdbr;             /* PDBR (page directory base reg) */
-    //  int     store;                  /* backing store for vheap      */
-    //  int     vhpno;                  /* starting pageno for vheap    */
-    //  int     vhpnpages;              /* vheap size                   */
-    //  struct mblock *vmemlist;        /* vheap list                   */
-    //
-    //
-    //
-    //
-    //
-    //
-    //  keep track of which backing store the process was allocated
-    //  when it was created using vcreate(). (use int store in PCB).
-    //
-    //
-    //  => Need to allocate a backing store for the process.
-    //
-    //
-    //
-    //
-    //
-    // When a process is created we must now also create page directory and
-    // record the address. Also remember that the first 16 megabytes of each
-    // process will be mapped to the 16 megabytes of physical memory, so we must
-    // initialize the process' page directory accordingly. This is important as
-    // our backing stores also depend on this correct mapping.
-    //
-    //
-    // A mapping must be created for the new process' private heap and stack ,
-    // if created with vcreate(). Because you are limited to 8 backing stores
-    // you may want to use just one mapping for both the heap and the stack (as
-    // with the kernel heap), vgetmem() taking from one end and the stack
-    // growing from the other. (Keeping a private stack and paging it is
-    // optional. But a private heap must be maintained).
-    //
+    // Disable interrupts
+    disable(ps);
 
     // Perform normal process stuff! 
     pid = create(procaddr, ssize, priority, name, nargs, args);
     pptr = &proctab[pid];
 
 
-
     // Get a pointer to a free backing store
     bsptr = get_free_bs(hsize);
     if (bsptr == NULL) {
         kprintf("vcreate(): could not find free backing store\n");
+        restore(ps);
         return SYSERR;
     }
 
@@ -103,6 +63,7 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
     rc = bs_add_mapping(bsptr->bsid, pid, 4096, hsize);
     if (rc == SYSERR) {
         kprintf("vcreate(): could not add mapping\n");
+        restore(ps);
         return SYSERR;
     }
 
@@ -113,9 +74,18 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
 
 
     // Initialize the free memory list for the virtual heap
-    pptr->vmemlist.mnext = vmptr = (struct mblock *) (4096*NBPG);
-    vmptr->mnext = 0;  // <--- A page fault will occur here
-    vmptr->mlen  = hsize*NBPG;
+    //
+    // The first item in the list will be the addr that maps 
+    // to 1st page of the backing store
+    pptr->vmemlist.mnext = (struct mblock *) (4096*NBPG);
 
-    return OK;
+    // Since this process hasn't started to run yet page fault won't
+    // work. We need to actually write mnext and mlen directly to the
+    // first page of the backing store.
+    memblock = BSID2PA(bsptr->bsid);
+    memblock->mnext = 0;  
+    memblock->mlen  = hsize*NBPG;
+
+    restore(ps);
+    return pid;
 }
