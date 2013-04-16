@@ -38,6 +38,9 @@ frame_t frm_tab[NFRAMES];
 // Used for FIFO frame replacement policy
 frame_t * frm_fifo_head;
 
+frame_t * _frm_evict();
+frame_t * _frm_evict_fifo();
+frame_t * _frm_evict_aging();
 
 /*
  * frm_free - free a frame 
@@ -54,6 +57,8 @@ int frm_free(frame_t * frame) {
     kprintf("frm_free(): Freeing frame %d\n", frame->frmid);
 #endif 
 
+    // Invalidate any page table entries for this frame
+    p_invalidate(FID2PA(frame->frmid));
 
     // If this frame is mapped from a backing store
     // then write the data back to the backing store
@@ -67,7 +72,7 @@ int frm_free(frame_t * frame) {
 
     }
 
-    // Invalidate the page table entry for this frame
+////// Invalidate the page table entry for this frame
 ////if (frame->pte) {
 ////    pte = (pt_t *)frame->pte;
 ////    pte->p_pres = 0;
@@ -137,11 +142,62 @@ frame_t * _frm_evict() {
 
     }
 
+    if (grpolicy() == FIFO)
+        if ((frame = _frm_evict_fifo()) == NULL)
+            return NULL;
+    else
+        if ((frame = _frm_evict_aging()) == NULL)
+            return NULL;
+
+    if (debugTA)
+        kprintf("_frm_evict(): Evicting frame %d\n", frame->frmid);
+    
+
+    return frame;
+}
+
+/*
+ * _frm_evict_fifo - Evict using FIFO replacement policy
+ */
+frame_t * _frm_evict_fifo() {
+    frame_t * prev;
+    frame_t * curr;
+
 #if DUSTYDEBUG
-    kprintf("_frm_evict(): Evicting frame using FIFO replacement\n");
+        kprintf("_frm_evict_fifo(): Evicting frame\n");
 #endif 
 
-    // If we made it here then we found no candidates and 
+    // we must force one page out of memory to free up space.
+    //
+    // Release the frame closest to the head of the fifo that 
+    // isn't a page directory or page table
+    prev = NULL;
+    curr = frm_fifo_head;
+    while (curr) {
+        if (curr->type == FRM_BS) {
+            prev->fifo_next = curr->fifo_next;
+            frm_free(curr);
+            return curr;
+        }
+        prev = curr;
+        curr = curr->fifo_next;
+    }
+
+    // If we made it here then there was a problem
+    return NULL;
+}
+
+/*
+ * _frm_evict_aging - Evict using AGING replacement policy
+ */
+frame_t * _frm_evict_aging() {
+    frame_t * prev;
+    frame_t * curr;
+
+#if DUSTYDEBUG
+        kprintf("_frm_evict_aging(): Evicting frame\n");
+#endif 
+
     // we must force one page out of memory to free up space.
     //
     // Release the frame closest to the head of the fifo that 

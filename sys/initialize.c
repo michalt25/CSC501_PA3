@@ -50,6 +50,7 @@ int console_dev;        /* the console device           */
 
 /*  added for the demand paging */
 int page_replace_policy = FIFO;
+int debugTA = 0;
 
 /************************************************************************/
 /***                NOTE:                     ***/

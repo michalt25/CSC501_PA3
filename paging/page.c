@@ -205,3 +205,62 @@ int pt_free(pt_t * pt) {
 
     return OK;
 }
+
+
+/*
+ * p_invalidate - Invalidate any page table entries that
+ *                mapp to physical frame with base at addr
+ */
+int p_invalidate(int addr) {
+    int proc, i, j;
+    struct pentry * pptr;
+    pd_t * pd;
+    pt_t * pt;
+    int page;
+
+    page = VA2VPNO(addr);
+
+    for (proc=0; proc<NPROC; proc++) {
+
+        // If this proc doesn't exist skip
+        pptr = &proctab[proc];
+        if (pptr->pstate == PRFREE)
+            continue;
+
+        // Get the page dir for this process
+        // and iterate over entries
+        //
+        // Note: Must start at 4 because we don't 
+        // want to invalidate entries from first 4 
+        // page tables.
+        pd = pptr->pd; 
+        for (i=4; i<NENTRIES; i++) {
+
+            // Is this page table present?
+            if (pd[i].pt_pres) {
+                pt = VPNO2VA(pd[i].pt_base);
+
+                // Iterate over page table entries
+                for (j=0; j<NENTRIES; j++) {
+
+                    if (pt[j].p_pres &&
+                        (pt[j].p_base == page)
+                    ) {
+                                pt[j].p_pres = 0;
+#if DUSTYDEBUG
+                                kprintf("Invalidating pt entry for base frame" 
+                                        " %d - proc:%d pt:%d offset:%d\n", 
+                                        PA2FID(addr), proc, i, j);
+#endif
+                                // update refcnts of pt and pd
+                    }
+
+                }
+
+            }
+
+        }
+
+    }
+
+}

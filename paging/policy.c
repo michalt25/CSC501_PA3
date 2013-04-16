@@ -16,15 +16,13 @@ extern int page_replace_policy;
  */
 SYSCALL srpolicy(int policy) {
 
-// XXX 
-// If srpolicy(FIFO) or srpolicy(AGING) is called in main(), you should
-// turn on your debugging option; when replacements occur, ONLY
-// replaced frame numbers (not addresses) must be printed out for
-// grading.
-
     // Make sure the policy they give is valid
     if ((policy != FIFO) && (policy != AGING))
         return SYSERR;
+
+    // Set the debugTA variable. This will be used to turn on 
+    // debugging output for TAs to use during grading.
+    debugTA = 1;
 
     // Set the policy and return
     page_replace_policy = policy;

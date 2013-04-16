@@ -5,7 +5,6 @@
 
 #include <bs.h>
 
-
 #define NBPG        4096    /* number of bytes per page */
 
 
@@ -93,6 +92,7 @@ pd_t * pd_alloc();
 pt_t * pt_alloc();
 int pd_free(pd_t * pd);
 int pt_free(pt_t * pt);
+int p_invalidate(int base);
 
 
 /* Prototypes for required memory API calls */
@@ -111,6 +111,8 @@ SYSCALL release_bs(bsd_t);
 SYSCALL read_bs(char *, bsd_t, int);
 SYSCALL write_bs(char *, bsd_t, int);
 
+
+extern int debugTA;
 
 
 #endif
