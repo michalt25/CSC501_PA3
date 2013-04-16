@@ -29,7 +29,6 @@ int init_page_tables() {
         }
 
         // fill in data in page table
-        //  XXX are these correct defaults?
         for (j=0; j<NENTRIES; j++) {
             pt[j].p_pres  = 1;        /* page is present?             */ 
             pt[j].p_write = 1;        /* page is writable?            */
@@ -206,10 +205,30 @@ int pt_free(pt_t * pt) {
     return OK;
 }
 
+/* 
+ * p_free - Free a page table entry
+ */
+int p_free(pt_t * pt) {
+
+    pt->p_pres  = 0;        /* page is present?     */
+    pt->p_write = 0;        /* page is writable?        */
+    pt->p_user  = 0;        /* is user level protection? */
+    pt->p_pwt   = 0;        /* write through for this page? */
+    pt->p_pcd   = 0;        /* cache disable for this page? */
+    pt->p_acc   = 0;        /* page was accessed?       */
+    pt->p_dirty = 0;        /* page was written?        */
+    pt->p_mbz   = 0;        /* must be zero         */
+    pt->p_global= 0;        /* should be zero in 586    */
+    pt->p_avail = 0;        /* for programmer's use     */
+    pt->p_base  = 0;        /* location of page?        */
+
+    return OK;
+}
+
 
 /*
  * p_invalidate - Invalidate any page table entries that
- *                mapp to physical frame with base at addr
+ *                map to physical frame with base at addr
  */
 int p_invalidate(int addr) {
     int proc, i, j;
@@ -217,6 +236,8 @@ int p_invalidate(int addr) {
     pd_t * pd;
     pt_t * pt;
     int page;
+    frame_t * ptframe;
+    int dirty = 0; // Keeps up with whether the page is dirty
 
     page = VA2VPNO(addr);
 
@@ -246,13 +267,19 @@ int p_invalidate(int addr) {
                     if (pt[j].p_pres &&
                         (pt[j].p_base == page)
                     ) {
-                                pt[j].p_pres = 0;
+
+                                if (pt[j].p_dirty)
+                                    dirty = 1;
 #if DUSTYDEBUG
                                 kprintf("Invalidating pt entry for base frame" 
-                                        " %d - proc:%d pt:%d offset:%d\n", 
-                                        PA2FID(addr), proc, i, j);
+                                        " %d dirty:%d - proc:%d pt:%d offset:%d\n", 
+                                        PA2FID(addr), dirty, proc, i, j);
 #endif
-                                // update refcnts of pt and pd
+                                p_free(&pt[j]);
+
+                                // update refcnt of pt
+                                ptframe = PA2FP(pt);
+                                ptframe->refcnt--;
                     }
 
                 }
@@ -262,5 +289,7 @@ int p_invalidate(int addr) {
         }
 
     }
+
+    return dirty;
 
 }

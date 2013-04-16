@@ -49,6 +49,7 @@ int frm_free(frame_t * frame) {
 
     bs_t * bsptr;
     pt_t * pte;
+    int dirty;
 
     if (!IS_VALID_FRMID(frame->frmid))
         return SYSERR;
@@ -58,11 +59,11 @@ int frm_free(frame_t * frame) {
 #endif 
 
     // Invalidate any page table entries for this frame
-    p_invalidate(FID2PA(frame->frmid));
+    dirty = p_invalidate(FID2PA(frame->frmid));
 
     // If this frame is mapped from a backing store
     // then write the data back to the backing store
-    if (frame->type == FRM_BS) {
+    if (frame->type == FRM_BS && dirty) {
 
         // Make sure the bsid is valid
         if (!IS_VALID_BSID(frame->bsid))
