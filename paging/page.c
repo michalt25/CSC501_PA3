@@ -169,8 +169,6 @@ pt_t * pt_alloc() {
         return NULL;
 
     // fill out rest of frm_tab entry here
-    // XXX
-    //frm_tab[frame].type = FR_TBL;
     frame->type = FRM_PT;
 
 
@@ -203,25 +201,7 @@ pt_t * pt_alloc() {
  */
 int pt_free(pt_t * pt) {
 
-    //int frmid = PA2FID((int)pt);
-
     frm_free(PA2FP(pt));
 
     return OK;
 }
-
-////// Find an available entry in the page directory and return
-////// the index into the page directory.
-//////
-////// If none are free return SYSERR
-////int find_emtpy_pde(pd_t * page_dir) {
-////    int i;
-
-////    // Find a free entry and return the index
-////    for (i=0; i<NENTRIES; i++)
-////        if (page_dir[i].pd_avail == 0)
-////            return i;
-
-////    // If we got here then there were no free entries
-////    return SYSERR;
-////}

@@ -137,7 +137,7 @@ tags: FRC
 	make -C ../config/ -f ../config/Makefile clean all
 
 ../h/conf.h ../sys/conf.c: ../config/config Configuration
-	../config/config; mv -f conf.c ../sys 
+	../config/config; mv conf.c ../sys 
 
 ${LIB}/libxc.a: FRC
 	(cd ${LIB}/libxc; make install)
@@ -349,14 +349,14 @@ monudp.o: ../mon/monudp.c ../h/./mon/monnetwork.h \
   ../h/./mon/monarp.h ../h/./mon/monnetif.h ../h/./mon/monitor.h \
   ../h/./mon/moncom.h ../h/./mon/moni386.h ../h/./mon/montftp.h \
   ../h/./mon/monbootp.h ../h/stdio.h
-####bsm.o: ../paging/bsm.c ../h/conf.h ../h/kernel.h ../h/systypes.h \
-####  ../h/mem.h ../h/paging.h ../h/proc.h
+bsm.o: ../paging/bsm.c ../h/conf.h ../h/kernel.h ../h/systypes.h \
+  ../h/mem.h ../h/paging.h ../h/proc.h
 control_reg.o: ../paging/control_reg.c ../h/conf.h ../h/kernel.h \
   ../h/systypes.h ../h/mem.h
 dump32.o: ../paging/dump32.c ../h/conf.h ../h/kernel.h ../h/systypes.h \
   ../h/mem.h
-####frame.o: ../paging/frame.c ../h/conf.h ../h/kernel.h ../h/systypes.h \
-####  ../h/mem.h ../h/proc.h ../h/paging.h
+frame.o: ../paging/frame.c ../h/conf.h ../h/kernel.h ../h/systypes.h \
+  ../h/mem.h ../h/proc.h ../h/paging.h
 get_bs.o: ../paging/get_bs.c ../h/conf.h ../h/kernel.h ../h/systypes.h \
   ../h/mem.h ../h/proc.h ../h/paging.h
 pfint.o: ../paging/pfint.c ../h/conf.h ../h/kernel.h ../h/systypes.h \

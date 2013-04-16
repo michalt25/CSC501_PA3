@@ -39,9 +39,8 @@ frame_t frm_tab[NFRAMES];
 frame_t * frm_fifo_head;
 
 
-/*-------------------------------------------------------------------------
- * free_frm - free a frame 
- *-------------------------------------------------------------------------
+/*
+ * frm_free - free a frame 
  */
 int frm_free(frame_t * frame) {
 
@@ -69,10 +68,10 @@ int frm_free(frame_t * frame) {
     }
 
     // Invalidate the page table entry for this frame
-    if (frame->pte) {
-        pte = (pt_t *)frame->pte;
-        pte->p_pres = 0;
-    }
+////if (frame->pte) {
+////    pte = (pt_t *)frame->pte;
+////    pte->p_pres = 0;
+////}
 
     // Any other cleanup that needs to be done?
     //
@@ -88,9 +87,8 @@ int frm_free(frame_t * frame) {
     return OK;
 }
 
-/*-------------------------------------------------------------------------
+/*
  * _frm_evict - Find a frame to evict from memory
- *-------------------------------------------------------------------------
  */
 frame_t * _frm_evict() {
     int i;
@@ -168,7 +166,7 @@ frame_t * _frm_evict() {
  * init_frm_tab - initialize frm_tab
  *
  */
-SYSCALL init_frmtab() {
+int init_frmtab() {
     int i;
 
     // To start out the FIFO frame replacement policy 
@@ -242,6 +240,50 @@ frame_t * frm_alloc() {
   //frm_fifo_head = frame;
 
     return frame;
+
+}
+
+
+/*
+ * frm_find_bspage - Iterate over the frame table and determine 
+ *                   if the backing store page (determined by bsid,
+ *                   bsoffset) is already in physical memory. If so
+ *                   return a pointer to the frame_t struct for that
+ *                   frame
+ */
+frame_t * frm_find_bspage(int bsid, int bsoffset) {
+    int i;
+    frame_t * frame;
+
+    // Iterate over the frames
+    for (i=0; i < NFRAMES; i++) {
+
+        frame = &frm_tab[i];
+
+        // Is this frame free, if so skip
+        if (frame->status == FRM_FREE)
+            continue;
+
+        // Is this a backing store page. If not skip
+        if (frame->type != FRM_BS)
+            continue;
+
+        // Does the bsid/bsoffset match? If so.. bingo
+        if (frame->bsid == bsid && frame->bspage == bsoffset) {
+#if DUSTYDEBUG
+            kprintf("Frame %d for bs:%d bspage:%d already mapped\n", 
+                frame->frmid,
+                bsid,
+                bsoffset);
+#endif
+            return frame;
+
+        }
+
+    }
+
+    // If we are here then we did not find anything
+    return NULL;
 
 }
 

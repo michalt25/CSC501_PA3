@@ -4,7 +4,8 @@
 #define _FRAME_H_
 
 #define FRAME0      1024    /* zero-th frame        */
-#define NFRAMES     20      /* number of frames     */
+//#define NFRAMES     1024      /* number of frames     */
+#define NFRAMES     12      /* number of frames     */
 
 // Macro to convert frame ID/INDEX to physical mem address
 #define FID2PA(frmid)   ((FRAME0 + (frmid))*NBPG)
@@ -96,7 +97,10 @@ typedef struct _frame_t {
 } frame_t;
 
 
+int init_frmtab();
+int frm_free(frame_t * frame);
 frame_t * frm_alloc(); 
+frame_t * frm_find_bspage(int bsid, int bsoffset);
 
 // Table with entries representing frame
 extern frame_t frm_tab[];

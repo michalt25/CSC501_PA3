@@ -112,31 +112,35 @@ SYSCALL pfint() {
     // Get the address of the page table
     pt = VPNO2VA(pd[pd_offset].pt_base);
 
-  //// Check to see if the page from the backing store
-  //// is already in physical memory. If so then bump
-  //// the refcnt and continue
-  //if (PA2FP(
-
-
-    // Get a free frame
-    frame = frm_alloc();
+    // Check to see if the page from the backing store is already in 
+    // physical memory (a frame). If not we will have to allocate a 
+    // new frame and bring the data in from disk (backing store).
+    frame = frm_find_bspage(bsptr->bsid, bsoffset);
     if (frame == NULL) {
-        kprintf("pfint(): could not get free frame!\n");
-        goto error;
+
+        // Get a free frame
+        frame = frm_alloc();
+        if (frame == NULL) {
+            kprintf("pfint(): could not get free frame!\n");
+            goto error;
+        }
+
+        // Populate a little more information in the frame
+        frame->pte    = &pt[pt_offset]; // XXX
+        frame->type   = FRM_BS;
+        frame->bsid   = bsptr->bsid;
+        frame->bspage = bsoffset;
+
+        // Add the frame to head of the frame list within the bs_t struct
+        frame->bs_next = bsptr->frames;
+        bsptr->frames = frame;
+
+        // Copy the page from the backing store into the frame
+        read_bs((void *)FID2PA(frame->frmid), bsmptr->bsid, bsoffset);
+
+    } else {
+        frame->refcnt++;
     }
-
-    // Populate a little more information in the frame
-    frame->pte    = &pt[pt_offset];
-    frame->type   = FRM_BS;
-    frame->bsid   = bsptr->bsid;
-    frame->bspage = bsoffset;
-
-    // Add the frame to head of the frame list within the bs_t struct
-    frame->bs_next = bsptr->frames;
-    bsptr->frames = frame;
-
-    // Copy the page from the backing store into the frame
-    read_bs((void *)FID2PA(frame->frmid), bsmptr->bsid, bsoffset);
 
     // Update the page table
     pt[pt_offset].p_pres  = 1;
