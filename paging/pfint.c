@@ -9,11 +9,6 @@
 
 
 
-
-//XXX should interrupts are disabled during page allocation? Are they
-//    already while we are in here?
-
-
 /*
  * pfint - paging fault ISR
  *
@@ -41,6 +36,9 @@ SYSCALL pfint() {
 
     // Disable interrupts
     disable(ps);
+
+    // Perform housekeeping tasks
+    housekeeping();
 
     // Get the faulted address. The processor loads the CR2 register
     // with the 32-bit address that generated the exception.
@@ -126,7 +124,6 @@ SYSCALL pfint() {
         }
 
         // Populate a little more information in the frame
-        frame->pte    = &pt[pt_offset]; // XXX
         frame->type   = FRM_BS;
         frame->bsid   = bsptr->bsid;
         frame->bspage = bsoffset;
@@ -170,3 +167,78 @@ error:
 }
 
 
+/*
+ * housekeeping - function to perform routine tasks during page fault
+ */
+int housekeeping() {
+    int proc, i, j, x;
+    struct pentry * pptr;
+    pd_t * pd;
+    pt_t * pt;
+    frame_t * frame;
+
+
+    for (proc=0; proc<NPROC; proc++) {
+
+        // If this proc doesn't exist skip
+        pptr = &proctab[proc];
+        if (pptr->pstate == PRFREE)
+            continue;
+
+        // Get the page dir for this process
+        // and iterate over entries
+        //
+        // Note: Must start at 4 because we don't 
+        // want to operate on entries from first 4 
+        // page tables.
+        pd = pptr->pd; 
+        for (i=4; i<NENTRIES; i++) {
+
+            // Is this page table present?
+            if (pd[i].pt_pres) {
+                pt = VPNO2VA(pd[i].pt_base);
+
+                // Iterate over page table entries
+                for (j=0; j<NENTRIES; j++) {
+
+                    // Present?
+                    if (pt[j].p_pres) {
+
+                        frame = PA2FP(VPNO2VA(pt[j].p_base));
+                        x = frame->age;
+
+                        // All frames age get decreased by half
+                        // Keep in mind we evict pages with smallest
+                        // age (decreasing age increases chance of 
+                        // page replacement).
+                        frame->age = frame->age >> 1;
+
+                        // If the page was accessed then we add 128 to the age
+                        if (pt[j].p_acc) {
+                            frame->age += 128;
+                            if (frame->age > 255)
+                                frame->age = 255; //max out at 255
+
+                            pt[j].p_acc = 0; // reset access flag
+                        }
+
+#if DUSTYDEBUG
+                        // Print out message if age changed
+                        if (x != frame->age)
+                            kprintf("Updated age of frame %d from %d to %d %s\n",
+                                    frame->frmid, x, frame->age,
+                                    (frame->age > x) ? "(accessed)" : "");
+#endif
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    }
+
+    return OK;
+}

@@ -80,7 +80,9 @@ int frm_cleanlists(void * bspointer) {
     prev = NULL;
     curr = frm_fifo_head;
     while (curr) {
+            kprintf("HEEEEEEEEEEEEERRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRE\n"); 
         if (curr->status == FRM_FREE) {
+
 
 #if DUSTYDEBUG
             kprintf("frm_cleanlists(): removing frm %d from fifo_next list\n", 
@@ -184,7 +186,6 @@ int frm_free(frame_t * frame) {
     frame->type   = FRM_FREE;
     frame->refcnt = 0;
     frame->age    = 0;
-    frame->pte    = NULL;
     frame->bsid   = -1;
     frame->bspage = 0;
 
@@ -199,6 +200,7 @@ frame_t * _frm_evict() {
     frame_t * frame;
     frame_t * prev;
     frame_t * curr;
+    int bsid;
 
 
     //  2. Else, Pick a page to replace.
@@ -233,12 +235,6 @@ frame_t * _frm_evict() {
         if (frame->status == FRM_FREE)
             return frame;
 
-        // Is this frames refcnt 0? If so use it
-        if (frame->refcnt == 0) {
-            frm_free(frame);
-            return frame;
-        }
-
     }
 
     if (grpolicy() == FIFO) {
@@ -251,8 +247,17 @@ frame_t * _frm_evict() {
 
     if (debugTA)
         kprintf("_frm_evict(): Evicting frame %d\n", frame->frmid);
-    
 
+
+    // Get the id of the bs for this frame 
+    bsid = frame->bsid;
+
+    // Free the frame
+    frm_free(frame);
+
+    // Clean up the frame lists
+    frm_cleanlists(&bs_tab[bsid]);
+    
     return frame;
 }
 
@@ -262,7 +267,7 @@ frame_t * _frm_evict() {
 frame_t * _frm_evict_fifo() {
     frame_t * prev;
     frame_t * curr;
-    int bsid = -1;
+    int found = 0;
 
 #if DUSTYDEBUG
         kprintf("_frm_evict_fifo(): Evicting frame\n");
@@ -276,9 +281,7 @@ frame_t * _frm_evict_fifo() {
     curr = frm_fifo_head;
     while (curr) {
         if (curr->type == FRM_BS) {
-            prev->fifo_next = curr->fifo_next;
-            bsid = curr->bsid;
-            frm_free(curr);
+            found = 1;
             break;
         }
         prev = curr;
@@ -286,11 +289,8 @@ frame_t * _frm_evict_fifo() {
     }
 
     // If we didn't find anything then return null
-    if (bsid == -1)
+    if (!found)
         return NULL;
-
-    // Clean up the frame lists
-    frm_cleanlists(&bs_tab[bsid]);
 
     // return the pointer to the free frame
     return curr;
@@ -298,33 +298,43 @@ frame_t * _frm_evict_fifo() {
 
 /*
  * _frm_evict_aging - Evict using AGING replacement policy
+ *
+ * Note: The way the algorithm works out the smallest value
+ *       for age actually means it is the oldest so we will 
+ *       find a frame with the smallest value for age to evict.
  */
 frame_t * _frm_evict_aging() {
     frame_t * prev;
     frame_t * curr;
+    frame_t * candidate;
+    frame_t framestruct;
 
 #if DUSTYDEBUG
         kprintf("_frm_evict_aging(): Evicting frame\n");
 #endif 
 
-    // we must force one page out of memory to free up space.
-    //
-    // Release the frame closest to the head of the fifo that 
-    // isn't a page directory or page table
+    // Initially our candidate will be set to the fake frame
+    // with age 255;
+    candidate = &framestruct;
+    candidate->age = 255;
+
+    // Find the frame with largest age.
     prev = NULL;
     curr = frm_fifo_head;
     while (curr) {
         if (curr->type == FRM_BS) {
-            prev->fifo_next = curr->fifo_next;
-            frm_free(curr);
-            return curr;
+            if (curr->age < candidate->age)
+                candidate = curr;
         }
         prev = curr;
         curr = curr->fifo_next;
     }
 
-    // If we made it here then there was a problem
-    return NULL;
+    // Did we find a real candidate? If not.. error
+    if (candidate == &framestruct)
+        return NULL;
+
+    return candidate;
 }
 
 /*
