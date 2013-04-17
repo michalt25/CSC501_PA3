@@ -80,9 +80,7 @@ int frm_cleanlists(void * bspointer) {
     prev = NULL;
     curr = frm_fifo_head;
     while (curr) {
-            kprintf("HEEEEEEEEEEEEERRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRE\n"); 
         if (curr->status == FRM_FREE) {
-
 
 #if DUSTYDEBUG
             kprintf("frm_cleanlists(): removing frm %d from fifo_next list\n", 
@@ -105,7 +103,7 @@ int frm_cleanlists(void * bspointer) {
 
         // Move to next frame in list
         prev = curr;
-        curr = curr->bs_next;
+        curr = curr->fifo_next;
     }
 
 
@@ -390,16 +388,12 @@ frame_t * frm_alloc() {
 
     // Populate data in the frame_t table
     frame->status = FRM_USED; // Current status
-  //frm_tab[i].type   = type;     // Type
-   // frm_tab[i].pid  = 0;      /* process id using this frame  */
     frame->refcnt = 1;        // reference count
-    frame->age    = 0; //XXX  // when page is loaded (in ticks)
-   //frm_tab[i].dirty = 0;
+    frame->age    = 0;
     frame->bsid   = -1;
     frame->bspage = 0;
     frame->fifo_next = NULL;
     frame->bs_next = NULL;
-    frame->pte    = NULL;
 
     // Add frame to end of fifo. 
     if (frm_fifo_head == NULL) {
@@ -410,9 +404,6 @@ frame_t * frm_alloc() {
             curr = curr->fifo_next;
         curr->fifo_next = frame;
     }
-  
-  //frame->fifo_next = frm_fifo_head;
-  //frm_fifo_head = frame;
 
     return frame;
 
