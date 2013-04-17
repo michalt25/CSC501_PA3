@@ -37,9 +37,6 @@ SYSCALL pfint() {
     // Disable interrupts
     disable(ps);
 
-    // Perform housekeeping tasks
-    housekeeping();
-
     // Get the faulted address. The processor loads the CR2 register
     // with the 32-bit address that generated the exception.
     //vaddr = (virt_addr_t) read_cr2();
@@ -50,6 +47,10 @@ SYSCALL pfint() {
 #if DUSTYDEBUG
     kprintf("Page Fault for address 0x%08x\tprocess %d\n", cr2, currpid);
 #endif
+
+    // Perform housekeeping tasks
+    housekeeping();
+
 
     // Get the base page directory for the process
     pptr = &proctab[currpid];

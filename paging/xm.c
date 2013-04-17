@@ -102,13 +102,10 @@ SYSCALL xmunmap(int vpno) {
         if (curr->bspage < bsmptr->npages)
             frm_decrefcnt(curr);
 
-
         // Move to next frame in list
         prev = curr;
         curr = curr->bs_next;
     }
-
-    frm_cleanlists(bsptr);
 
     // Remove mapping from maps list
     rc = bs_del_mapping(currpid, vpno);

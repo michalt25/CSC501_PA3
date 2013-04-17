@@ -143,8 +143,6 @@ int pd_free(pd_t * pd) {
     for (i=0; i < NENTRIES; i++)
         pt_free((pt_t *)&pd[i]);
 
-    //int frmid = PA2FID((int)pd);
-
     frm_free(PA2FP(pd));
 
     return OK;
@@ -238,7 +236,6 @@ int p_invalidate(int addr) {
     int page;
     frame_t * frame;
     int dirty = 0; // Keeps up with whether the page is dirty
-    int bsid  = -1;
 
     page = VA2VPNO(addr);
 
@@ -269,29 +266,19 @@ int p_invalidate(int addr) {
                         (pt[j].p_base == page)
                     ) {
 
-                                if (pt[j].p_dirty)
-                                    dirty = 1;
+                        if (pt[j].p_dirty)
+                            dirty = 1;
 #if DUSTYDEBUG
-                                kprintf("Invalidating pt entry for base frame" 
-                                        " %d dirty:%d - proc:%d pt:%d offset:%d\n", 
-                                        PA2FID(addr), dirty, proc, i, j);
+                        kprintf("Invalidating pt entry for base frame" 
+                                " %d dirty:%d - proc:%d pt:%d offset:%d\n", 
+                                PA2FID(addr), dirty, proc, i, j);
 #endif
-                                p_free(&pt[j]);
+                        p_free(&pt[j]);
 
-                                // Get the frame pointer for this frame of memory
-                                frame = PA2FP(pt);
-
-                                // If this frame maps to a backing store then save 
-                                // the bsid off for later use
-                                if (frame->type == FRM_BS)
-                                    bsid = frame->bsid;
-
-                                // update refcnt of pt
-                                // XXX is there a problem doing this
-                                // here? If the frame gets freed then
-                                // possibly finishing walking the page
-                                // table later will fail.
-                                frm_decrefcnt(PA2FP(pt));
+                        // Since we are removing a page from the page 
+                        // table we need to decrease the refcnt of the
+                        // table
+                        frm_decrefcnt(PA2FP(pt));
                     }
 
                 }
@@ -302,13 +289,5 @@ int p_invalidate(int addr) {
 
     }
 
-    // In case any frames now have no references lets clean up
-    // the fifo for frame replacement.
-    if (bsid != -1)
-        frm_cleanlists(&bs_tab[bsid]);
-    else
-        frm_cleanlists(NULL);
-
     return dirty;
-
 }

@@ -178,16 +178,25 @@ int frm_free(frame_t * frame) {
 
     }
 
-    // Any other cleanup that needs to be done?
-    // 
-    // Note: bs_next and fifo_next are not cleaned up
-    //       frm_cleanlists() function takes care of this.
+    // Set the frame status as free and clean it up from any
+    // lists it may be in.
     frame->status = FRM_FREE;
+
+    // Clean this frame up from any lists it may be in
+    if (frame->type == FRM_BS)
+        frm_cleanlists(&bs_tab[frame->bsid]);
+    else
+        frm_cleanlists(NULL);
+
+
+    // Any other cleanup that needs to be done..
     frame->type   = FRM_FREE;
     frame->refcnt = 0;
     frame->age    = 0;
     frame->bsid   = -1;
     frame->bspage = 0;
+    frame->bs_next   = NULL;
+    frame->fifo_next = NULL;
 
     return OK;
 }
@@ -198,9 +207,6 @@ int frm_free(frame_t * frame) {
 frame_t * _frm_evict() {
     int i;
     frame_t * frame;
-    frame_t * prev;
-    frame_t * curr;
-    int bsid;
 
 
     //  2. Else, Pick a page to replace.
@@ -249,15 +255,9 @@ frame_t * _frm_evict() {
         kprintf("_frm_evict(): Evicting frame %d\n", frame->frmid);
 
 
-    // Get the id of the bs for this frame 
-    bsid = frame->bsid;
-
     // Free the frame
     frm_free(frame);
 
-    // Clean up the frame lists
-    frm_cleanlists(&bs_tab[bsid]);
-    
     return frame;
 }
 
