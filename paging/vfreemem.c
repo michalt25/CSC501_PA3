@@ -32,10 +32,6 @@ SYSCALL vfreemem(struct mblock* block, unsigned int size) {
     // Get pointer to proctab entry for this proc
     pptr = &proctab[currpid];
 
-//  if (size==0 || (unsigned)block>(unsigned)maxaddr
-//      || ((unsigned)block)<((unsigned) &end))
-//      return(SYSERR);
-
 
     // Round up to a multiple of the size of a memory block
     size = (unsigned)roundmb(size);

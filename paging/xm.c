@@ -17,6 +17,7 @@
  */ 
 SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
     int rc;
+    STATWORD ps;
 
 
 #if DUSTYDEBUG
@@ -33,14 +34,19 @@ SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
         return SYSERR;
     }
 
+    // Disable interrupts
+    disable(ps);
+
 
     // Add a mapping to the backing store mapping table
     rc = bs_add_mapping(bsid, currpid, vpno, npages);
     if (rc == SYSERR) {
         kprintf("xmmap - could not create mapping!\n");
+        restore(ps);
         return SYSERR;
     }
 
+    restore(ps);
     return OK;
 }
 
@@ -57,23 +63,28 @@ SYSCALL xmunmap(int vpno) {
     frame_t * prev;
     frame_t * curr;
     struct pentry * pptr;
+    STATWORD ps;
 
 #if DUSTYDEBUG
     kprintf("xmunmap(%d) for proc %d\n", vpno, currpid);
 #endif
-
-    // Get a pointer to the PCB for current proc
-    pptr = &proctab[currpid];
 
     if ((vpno < 4096)) { 
         kprintf("xmummap call error: vpno (%d) invalid! \n", vpno);
         return SYSERR;
     }
 
+    // Disable interrupts
+    disable(ps);
+
+    // Get a pointer to the PCB for current proc
+    pptr = &proctab[currpid];
+
     // Use backing store map to find the store and page offset
     bsmptr = bs_lookup_mapping(currpid, vpno);
     if (bsmptr == NULL) {
         kprintf("xmunmap(): could not find mapping!\n");
+        restore(ps);
         return SYSERR;
     }
 
@@ -103,6 +114,7 @@ SYSCALL xmunmap(int vpno) {
     rc = bs_del_mapping(currpid, vpno);
     if (rc == SYSERR) {
         kprintf("xmunmap(): could not undo mapping!\n");
+        restore(ps);
         return SYSERR;
     }
 
@@ -113,6 +125,7 @@ SYSCALL xmunmap(int vpno) {
     // time the CR3 register is loaded.
     set_PDBR(VA2VPNO(pptr->pd));
 
+    restore(ps);
     return OK;
 }
 
