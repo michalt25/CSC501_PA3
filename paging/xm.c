@@ -88,28 +88,16 @@ SYSCALL xmunmap(int vpno) {
     while (curr) {
 
         // Does this frame match?
-        if (curr->bspage < bsmptr->npages) {
+        if (curr->bspage < bsmptr->npages)
+            frm_decrefcnt(curr);
 
-            // Remove the frame from the list. Act differently
-            // depending on if the frame is the head of the list or
-            // not
-            if (prev == NULL) {
-                bsptr->frames = curr->bs_next;
-                frm_free(curr);
-                curr = bsptr->frames;
-            } else {
-                prev->bs_next = curr->bs_next;
-                frm_free(curr);
-                curr = prev->bs_next;
-            }
-
-            continue;
-        } 
 
         // Move to next frame in list
         prev = curr;
         curr = curr->bs_next;
     }
+
+    frm_cleanlists(bsptr);
 
     // Remove mapping from maps list
     rc = bs_del_mapping(currpid, vpno);

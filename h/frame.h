@@ -98,6 +98,8 @@ typedef struct _frame_t {
 
 
 int init_frmtab();
+int frm_cleanlists(void * bspointer);
+int frm_decref(frame_t * frame);
 int frm_free(frame_t * frame);
 frame_t * frm_alloc(); 
 frame_t * frm_find_bspage(int bsid, int bsoffset);

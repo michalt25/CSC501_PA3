@@ -42,6 +42,109 @@ frame_t * _frm_evict();
 frame_t * _frm_evict_fifo();
 frame_t * _frm_evict_aging();
 
+
+/*
+ * frm_decrefcnt - decrease the reference count of a frame
+ *                 and free if it possible 
+ */
+int frm_decrefcnt(frame_t * frame) {
+
+#if DUSTYDEBUG
+    kprintf("frm_decrefcnt(): frm %d type %d - cnt %d -> %d\n", 
+            frame->frmid, frame->type, frame->refcnt, frame->refcnt - 1);
+#endif 
+
+    frame->refcnt--;
+
+    if (frame->refcnt == 0)
+        frm_free(frame);
+
+    return OK;
+}
+
+/*
+ * frm_cleanlists - Go through the lists and clean up frames that are no
+ *                  longer in use. Only need to provide head of
+ *                  bs_next list.. frm_fifo_head is global. If NULL is
+ *                  passed in for bs_next_head then we won't go
+ *                  through that list.
+ */
+int frm_cleanlists(void * bspointer) {
+    bs_t * bsptr;
+    frame_t * prev;
+    frame_t * curr;
+
+    bsptr = (bs_t *) bspointer;
+
+    // Go through fifo_list!
+    prev = NULL;
+    curr = frm_fifo_head;
+    while (curr) {
+        if (curr->status == FRM_FREE) {
+
+#if DUSTYDEBUG
+            kprintf("frm_cleanlists(): removing frm %d from fifo_next list\n", 
+                    curr->frmid);
+#endif 
+
+            // Remove the frame from the list. Act differently
+            // depending on if the frame is the head of the list or
+            // not
+            if (prev == NULL) {
+                frm_fifo_head = curr->fifo_next;
+                curr = frm_fifo_head;
+            } else {
+                prev->fifo_next = curr->fifo_next;
+                curr = prev->fifo_next;
+            }
+
+            continue;
+        } 
+
+        // Move to next frame in list
+        prev = curr;
+        curr = curr->bs_next;
+    }
+
+
+    // Go through bs_next list!
+    // If they passed us NULL then just return
+    if (bsptr == NULL)
+        return OK;
+
+    prev = NULL;
+    curr = bsptr->frames;
+    while (curr) {
+        if (curr->status == FRM_FREE) {
+
+#if DUSTYDEBUG
+            kprintf("frm_cleanlists(): removing frm %d from bs_next list\n", 
+                    curr->frmid);
+#endif 
+
+            // Remove the frame from the list. Act differently
+            // depending on if the frame is the head of the list or
+            // not
+            if (prev == NULL) {
+                bsptr->frames = curr->bs_next;
+                curr = bsptr->frames;
+            } else {
+                prev->bs_next = curr->bs_next;
+                curr = prev->bs_next;
+            }
+
+            continue;
+        } 
+
+        // Move to next frame in list
+        prev = curr;
+        curr = curr->bs_next;
+    }
+
+
+    return OK;
+}
+
 /*
  * frm_free - free a frame 
  */
@@ -73,14 +176,10 @@ int frm_free(frame_t * frame) {
 
     }
 
-////// Invalidate the page table entry for this frame
-////if (frame->pte) {
-////    pte = (pt_t *)frame->pte;
-////    pte->p_pres = 0;
-////}
-
     // Any other cleanup that needs to be done?
-    //
+    // 
+    // Note: bs_next and fifo_next are not cleaned up
+    //       frm_cleanlists() function takes care of this.
     frame->status = FRM_FREE;
     frame->type   = FRM_FREE;
     frame->refcnt = 0;
@@ -88,7 +187,6 @@ int frm_free(frame_t * frame) {
     frame->pte    = NULL;
     frame->bsid   = -1;
     frame->bspage = 0;
-    frame->bs_next= NULL;
 
     return OK;
 }
@@ -143,12 +241,13 @@ frame_t * _frm_evict() {
 
     }
 
-    if (grpolicy() == FIFO)
+    if (grpolicy() == FIFO) {
         if ((frame = _frm_evict_fifo()) == NULL)
             return NULL;
-    else
+    } else {
         if ((frame = _frm_evict_aging()) == NULL)
             return NULL;
+    }
 
     if (debugTA)
         kprintf("_frm_evict(): Evicting frame %d\n", frame->frmid);
@@ -163,6 +262,7 @@ frame_t * _frm_evict() {
 frame_t * _frm_evict_fifo() {
     frame_t * prev;
     frame_t * curr;
+    int bsid = -1;
 
 #if DUSTYDEBUG
         kprintf("_frm_evict_fifo(): Evicting frame\n");
@@ -177,15 +277,23 @@ frame_t * _frm_evict_fifo() {
     while (curr) {
         if (curr->type == FRM_BS) {
             prev->fifo_next = curr->fifo_next;
+            bsid = curr->bsid;
             frm_free(curr);
-            return curr;
+            break;
         }
         prev = curr;
         curr = curr->fifo_next;
     }
 
-    // If we made it here then there was a problem
-    return NULL;
+    // If we didn't find anything then return null
+    if (bsid == -1)
+        return NULL;
+
+    // Clean up the frame lists
+    frm_cleanlists(&bs_tab[bsid]);
+
+    // return the pointer to the free frame
+    return curr;
 }
 
 /*

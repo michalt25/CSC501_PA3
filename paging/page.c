@@ -236,8 +236,9 @@ int p_invalidate(int addr) {
     pd_t * pd;
     pt_t * pt;
     int page;
-    frame_t * ptframe;
+    frame_t * frame;
     int dirty = 0; // Keeps up with whether the page is dirty
+    int bsid  = -1;
 
     page = VA2VPNO(addr);
 
@@ -277,9 +278,20 @@ int p_invalidate(int addr) {
 #endif
                                 p_free(&pt[j]);
 
+                                // Get the frame pointer for this frame of memory
+                                frame = PA2FP(pt);
+
+                                // If this frame maps to a backing store then save 
+                                // the bsid off for later use
+                                if (frame->type == FRM_BS)
+                                    bsid = frame->bsid;
+
                                 // update refcnt of pt
-                                ptframe = PA2FP(pt);
-                                ptframe->refcnt--;
+                                // XXX is there a problem doing this
+                                // here? If the frame gets freed then
+                                // possibly finishing walking the page
+                                // table later will fail.
+                                frm_decrefcnt(PA2FP(pt));
                     }
 
                 }
@@ -289,6 +301,13 @@ int p_invalidate(int addr) {
         }
 
     }
+
+    // In case any frames now have no references lets clean up
+    // the fifo for frame replacement.
+    if (bsid != -1)
+        frm_cleanlists(&bs_tab[bsid]);
+    else
+        frm_cleanlists(NULL);
 
     return dirty;
 
