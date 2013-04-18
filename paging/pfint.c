@@ -45,7 +45,7 @@ SYSCALL pfint() {
 
 
 #if DUSTYDEBUG
-    kprintf("Page Fault for address 0x%08x\tprocess %d\n", cr2, currpid);
+    kprintf("!PAGE FAULT for address 0x%08x\tprocess %d\n", cr2, currpid);
 #endif
 
     // Update the ages for all frames

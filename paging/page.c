@@ -234,6 +234,7 @@ int p_invalidate(int addr) {
     pt_t * pt;
     int page;
     frame_t * frame;
+    frame_t * ptframe;
     int dirty = 0; // Keeps up with whether the page is dirty
 
     page = VA2VPNO(addr);
@@ -277,7 +278,19 @@ int p_invalidate(int addr) {
                         // Since we are removing a page from the page 
                         // table we need to decrease the refcnt of the
                         // table
-                        frm_decrefcnt(PA2FP(pt));
+                        ptframe = PA2FP(pt);
+                        frm_decrefcnt(ptframe);
+
+                        // If the frame is now free then lets make the
+                        // entry in the page directory as not present
+                        if (ptframe->status == FRM_FREE) {
+#if DUSTYDEBUG
+                            kprintf("PT has been freed.. Invalidating entry in PD\n"); 
+#endif
+                            pd[i].pt_pres = 0;
+                        }
+
+
                     }
 
                 }
