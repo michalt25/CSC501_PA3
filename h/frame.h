@@ -32,20 +32,6 @@
 //
 #define NENTRIES (NBPG/4)
 
-// Macros to determine if a memory frame is 
-// mapped or not.
-//#define FRM_UNMAPPED 0
-//#define FRM_MAPPED   1
-
-// Macros to determine the frame type. The types are:
-//     FR_PAGE - contains actual logical memory
-//     FR_TBL  - contains a page table
-//     FR_DIR  - contains a page table directory
-//#define FRM_PAGE 0
-//#define FRM_TBL  1
-//#define FRM_DIR  2
-
-
 // Macros to determine the frame status.
 #define FRM_FREE 0
 #define FRM_USED 1
@@ -68,6 +54,9 @@ typedef struct _frame_t {
                 // FRM_PT   - Being used for a page table
                 // FRM_BS   - Part of a backing store
 
+    int accessed; // Was the frame accessed or not since last
+                  // check?
+
     int refcnt; // If the frame is used for a page table (FRM_PGT),
                 // refcnt is the number of mappings in the table. 
                 // When refcnt is 0 release the frame. 
@@ -80,10 +69,9 @@ typedef struct _frame_t {
              // Used for page replacement policy AGING 
                 
 
-    struct _frame_t * fifo_next; // was originally called fifo (may be a clue)
-        // XXX The following is a guess as to what this is needed for:
-        // Pages may belong to many lists.. lists of free frames, dirty
-        // frames, clean frames, etc.. 
+    struct _frame_t * fifo_next;
+        // The fifo that keeps up with the order in which frames were
+        // allocated. Oldest frames are at the head of the fifo.
 
     void * pte; // Keep up with what page table entry maps to 
                 // this frame
@@ -98,9 +86,9 @@ typedef struct _frame_t {
 
 
 int init_frmtab();
-int frm_cleanlists(void * bspointer);
-int frm_decref(frame_t * frame);
+int frm_decrefcnt(frame_t * frame);
 int frm_free(frame_t * frame);
+int frm_update_ages();
 frame_t * frm_alloc(); 
 frame_t * frm_find_bspage(int bsid, int bsoffset);
 

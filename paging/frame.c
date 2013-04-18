@@ -63,13 +63,13 @@ int frm_decrefcnt(frame_t * frame) {
 }
 
 /*
- * frm_cleanlists - Go through the lists and clean up frames that are no
- *                  longer in use. Only need to provide head of
- *                  bs_next list.. frm_fifo_head is global. If NULL is
- *                  passed in for bs_next_head then we won't go
- *                  through that list.
+ * _frm_cleanlists - Go through the lists and clean up frames that are no
+ *                   longer in use. Only need to provide head of
+ *                   bs_next list.. frm_fifo_head is global. If NULL is
+ *                   passed in for bs_next_head then we won't go
+ *                   through that list.
  */
-int frm_cleanlists(void * bspointer) {
+int _frm_cleanlists(void * bspointer) {
     bs_t * bsptr;
     frame_t * prev;
     frame_t * curr;
@@ -83,7 +83,7 @@ int frm_cleanlists(void * bspointer) {
         if (curr->status == FRM_FREE) {
 
 #if DUSTYDEBUG
-            kprintf("frm_cleanlists(): removing frm %d from fifo_next list\n", 
+            kprintf("_frm_cleanlists(): removing frm %d from fifo_next list\n", 
                     curr->frmid);
 #endif 
 
@@ -118,7 +118,7 @@ int frm_cleanlists(void * bspointer) {
         if (curr->status == FRM_FREE) {
 
 #if DUSTYDEBUG
-            kprintf("frm_cleanlists(): removing frm %d from bs_next list\n", 
+            kprintf("_frm_cleanlists(): removing frm %d from bs_next list\n", 
                     curr->frmid);
 #endif 
 
@@ -182,9 +182,9 @@ int frm_free(frame_t * frame) {
 
     // Clean this frame up from any lists it may be in
     if (frame->type == FRM_BS)
-        frm_cleanlists(&bs_tab[frame->bsid]);
+        _frm_cleanlists(&bs_tab[frame->bsid]);
     else
-        frm_cleanlists(NULL);
+        _frm_cleanlists(NULL);
 
 
     // Any other cleanup that needs to be done..
@@ -197,6 +197,8 @@ int frm_free(frame_t * frame) {
     frame->age    = 0;
     frame->bsid   = -1;
     frame->bspage = 0;
+    frame->accessed = 0;
+
 
     return OK;
 }
@@ -208,39 +210,13 @@ frame_t * _frm_evict() {
     int i;
     frame_t * frame;
 
-
-    //  2. Else, Pick a page to replace.
-    //  3. Using the inverted page table, get vp, the virtual page number of the page to be replaced.
-    //  4. Let a be vp*4096 (the first virtual address on page vp).
-    //  5. Let p be the high 10 bits of a. Let q be bits [21:12] of a.
-    //  6. Let pid be the pid of the process owning vp.
-    //  7. Let pd point to the page directory of process pid.
-    //  8. Let pt point to the pid's pth page table.
-    //  9. Mark the appropriate entry of pt as not present.
-    //  10. If the page being removed belongs to the current process, 
-    //      invalidate the TLB entry for the page vp using the invlpg 
-    //      instruction (see Intel Volume III/II).
-    //  11. In the inverted page table decrement the reference count of the 
-    //      frame occupied by pt. If the reference count has reached zero, you 
-    //      should mark the appropriate entry in pd as being not present.
-    //      This conserves frames by keeping only page tables which are necessary.
-    //  12. If the dirty bit for page vp was set in its page table you must 
-    //      do the following:
-    //          - Using the backing store map find the store and page
-    //            offset within store given pid and a. If the lookup fails,
-    //            something is wrong. Print an error message and kill the 
-    //            process pid.
-    //          - Write the page back to the backing store.
-    
     // Iterate over the frames
     for (i=0; i < NFRAMES; i++) {
-
         frame = &frm_tab[i];
 
         // Is this frame free, if so use it
         if (frame->status == FRM_FREE)
             return frame;
-
     }
 
     if (grpolicy() == FIFO) {
@@ -253,7 +229,6 @@ frame_t * _frm_evict() {
 
     if (debugTA)
         kprintf("_frm_evict(): Evicting frame %d\n", frame->frmid);
-
 
     // Free the frame
     frm_free(frame);
@@ -353,12 +328,11 @@ int init_frmtab() {
         frm_tab[i].frmid  = i;        // frame id/index
         frm_tab[i].status = FRM_FREE; // Current status
         frm_tab[i].type   = FRM_FREE; // Type
-       // frm_tab[i].pid  = 0;      /* process id using this frame  */
         frm_tab[i].refcnt = 0;        // reference count
         frm_tab[i].age    = 0;        // when page is loaded (in ticks)
         frm_tab[i].bspage = 0;
         frm_tab[i].bsid   = -1;
-        frm_tab[i].pte    = NULL;
+        frm_tab[i].accessed  = 0;
         frm_tab[i].fifo_next = NULL;
         frm_tab[i].bs_next   = NULL;
     }
@@ -389,13 +363,14 @@ frame_t * frm_alloc() {
 #endif
 
     // Populate data in the frame_t table
-    frame->status = FRM_USED; // Current status
-    frame->refcnt = 0;        // should be updated by caller
-    frame->age    = 0;
-    frame->bsid   = -1;
-    frame->bspage = 0;
+    frame->status    = FRM_USED; // Current status
+    frame->refcnt    = 0;        // should be updated by caller
+    frame->accessed  = 0;
+    frame->age       = 0;
+    frame->bsid      = -1;
+    frame->bspage    = 0;
     frame->fifo_next = NULL;
-    frame->bs_next = NULL;
+    frame->bs_next   = NULL;
 
     // Add frame to end of fifo. 
     if (frm_fifo_head == NULL) {
@@ -453,6 +428,102 @@ frame_t * frm_find_bspage(int bsid, int bsoffset) {
     // If we are here then we did not find anything
     return NULL;
 
+}
+
+
+/*
+ *  frm_update_ages - function to update frame ages. Called
+ *                    during a page fault.
+ */
+int frm_update_ages() {
+    int proc, i, j, x;
+    struct pentry * pptr;
+    pd_t * pd;
+    pt_t * pt;
+    frame_t * frame;
+    frame_t * curr;
+
+
+    for (proc=0; proc<NPROC; proc++) {
+
+        // If this proc doesn't exist skip
+        pptr = &proctab[proc];
+        if (pptr->pstate == PRFREE)
+            continue;
+
+        // Get the page dir for this process
+        // and iterate over entries
+        //
+        // Note: Must start at 4 because we don't 
+        // want to operate on entries from first 4 
+        // page tables.
+        pd = pptr->pd; 
+        for (i=4; i<NENTRIES; i++) {
+
+            // Is this page table present?
+            if (pd[i].pt_pres) {
+                pt = VPNO2VA(pd[i].pt_base);
+
+                // Iterate over page table entries
+                for (j=0; j<NENTRIES; j++) {
+
+                    // Has it been accessed?
+                    if (pt[j].p_pres && pt[j].p_acc) {
+
+                        frame = PA2FP(VPNO2VA(pt[j].p_base));
+                        frame->accessed = 1;
+                        pt[j].p_acc = 0; // reset accessed bit
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    }
+
+    // Now that all the accessed bits are updated lets update
+    // the ages of the frames. We needed to this separately because 
+    // otherwise if two pages map to a single frame the frames would
+    // get updated twice everytime this was done. By updating the
+    // accessed bit in the frame (doesn't matter if you update it
+    // twice) first, then we ensure we only update the age once.
+    curr = frm_fifo_head;
+    while (curr) {
+
+        x = curr->age;
+
+        // All frames age get decreased by half
+        // Keep in mind we evict pages with smallest
+        // age (decreasing age increases chance of 
+        // page replacement).
+        curr->age = curr->age >> 1;
+
+        // If the page was accessed then we add 128 to the age
+        if (curr->accessed) {
+
+            curr->age += 128;
+            if (curr->age > 255)
+                curr->age = 255; //max out at 255
+
+            curr->accessed = 0; // reset access flag
+        }
+
+#if DUSTYDEBUG
+        // Print out message if age changed
+        if (x != curr->age)
+            kprintf("Updated age of frame %d from %d to %d %s\n",
+                    curr->frmid, x, curr->age,
+                    (curr->age > x) ? "(accessed)" : "");
+#endif
+
+        // Go to next frame in list
+        curr = curr->fifo_next;
+    }
+
+    return OK;
 }
 
 
