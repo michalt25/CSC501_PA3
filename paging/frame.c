@@ -188,13 +188,15 @@ int frm_free(frame_t * frame) {
 
 
     // Any other cleanup that needs to be done..
+    //
+    // Note: Don't clean up bs_next and fifo_next 
+    //       as loops may still be using them for now.
+    //       They will be set to null in frm_alloc()
     frame->type   = FRM_FREE;
     frame->refcnt = 0;
     frame->age    = 0;
     frame->bsid   = -1;
     frame->bspage = 0;
-    frame->bs_next   = NULL;
-    frame->fifo_next = NULL;
 
     return OK;
 }
@@ -388,7 +390,7 @@ frame_t * frm_alloc() {
 
     // Populate data in the frame_t table
     frame->status = FRM_USED; // Current status
-    frame->refcnt = 1;        // reference count
+    frame->refcnt = 0;        // should be updated by caller
     frame->age    = 0;
     frame->bsid   = -1;
     frame->bspage = 0;

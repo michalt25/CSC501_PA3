@@ -86,7 +86,6 @@ pd_t * pd_alloc() {
     }
 
     // fill out rest of frm_tab entry here
-    // XXX
     frame->type = FRM_PD;
 
 

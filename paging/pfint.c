@@ -128,6 +128,7 @@ SYSCALL pfint() {
         frame->type   = FRM_BS;
         frame->bsid   = bsptr->bsid;
         frame->bspage = bsoffset;
+        frame->refcnt = 1;
 
         // Add the frame to head of the frame list within the bs_t struct
         frame->bs_next = bsptr->frames;
