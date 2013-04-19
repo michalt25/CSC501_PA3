@@ -10,7 +10,7 @@
 // Macro to convert frame ID/INDEX to physical mem address
 #define FID2PA(frmid)   ((FRAME0 + (frmid))*NBPG)
 #define FID2VPNO(frmid) (FRAME0 + (frmid))
-#define PA2FID(addr)    (((int)(addr)/NBPG) - FRAME0)
+#define PA2FID(addr)    (((unsigned int)(addr)/NBPG) - FRAME0)
 #define PA2FP(addr)     (&frm_tab[PA2FID((addr))])
 
 // Macro to verify the given frmid is valid

@@ -49,7 +49,8 @@ SYSCALL pfint() {
 #endif
 
     // Update the ages for all frames
-    frm_update_ages();
+    if (grpolicy() == AGING)
+        frm_update_ages();
 
 
     // Get the base page directory for the process

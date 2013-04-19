@@ -48,10 +48,10 @@ int bs_alloc(bsd_t bsid, int npages) {
 
     // Initialize the data
     bsptr->status = BS_USED;
-    bsptr->isheap = 0; // XXX 
+    bsptr->isheap = 0;
     bsptr->npages = npages;
-    bsptr->maps   = NULL; // XXX 
-    bsptr->frames = NULL; // XXX
+    bsptr->maps   = NULL;
+    bsptr->frames = NULL;
 
     return OK;
 }

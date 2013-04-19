@@ -28,7 +28,7 @@ SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
     if ((vpno < 4096)        || 
         !IS_VALID_BSID(bsid) || 
         (npages < 1)         || 
-        (npages > 200)
+        (npages > MAX_BS_PAGES)
     ) {
         kprintf("xmmap call error: parameter error! \n");
         return SYSERR;

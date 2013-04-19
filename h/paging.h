@@ -12,8 +12,8 @@
 //
 // Basically there are NBPG bytes per page which means there
 // are NBPG addresses per page. 
-#define VA2VPNO(vaddr) ((int)(vaddr) / NBPG)
-#define VPNO2VA(vpno) ((int)(vpno)*NBPG)
+#define VA2VPNO(vaddr) ((unsigned int)(vaddr) / NBPG)
+#define VPNO2VA(vpno) ((unsigned int)(vpno)*NBPG)
 
 
 // Macros used to determine the memory eviction policy
@@ -62,29 +62,11 @@ typedef struct {
 } virt_addr_t;
 
 
-
-////// Structure representing a physical memory frame
-//////      - Divide physical memory into ﬁxed-sized blocks 
-//////        called frames 
-////typedef struct {
-////    int fr_status;            /* MAPPED or UNMAPPED       */
-////    int fr_pid;               /* process id using this frame  */
-////    int fr_vpno;              /* corresponding virtual page no*/
-////    int fr_refcnt;            /* reference count      */
-////    int fr_type;              /* FR_DIR, FR_TBL, FR_PAGE  */
-////    int fr_dirty;
-////    void *cookie;             /* private data structure   */
-////    unsigned long int fr_loadtime;    /* when the page is loaded  */
-////} fr_map_t;
-
-
-
 // The first four page tables map the first 4096 pages
 // (real physical memory). The information in these page tables
 // is the same for all processes. We will use the following variable
 // gpt (global page tables) array to keep up with these page tables.
 extern pt_t * gpt[];
-
 
 // pd and pt functions
 int init_page_tables();

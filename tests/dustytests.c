@@ -9,7 +9,6 @@
 #include <frame.h>
 #include <sem.h>
 
-
 //////////////////////////////////////////////////////////////////////////
 //  basic_test
 //////////////////////////////////////////////////////////////////////////
@@ -348,6 +347,12 @@ void shmemproducer(int sem) {
     }
     kprintf("\n");
     signal(sem);
+
+    sleep(1);
+
+    xmunmap(VA2VPNO(addr));
+
+    release_bs(bsid);
 }
 void shmemconsumer(int sem) {
     int i,j;
@@ -404,6 +409,12 @@ void shmemconsumer(int sem) {
     }
     kprintf("\n");
     signal(sem);
+
+    sleep(1);
+
+    xmunmap(VA2VPNO(addr));
+
+    release_bs(bsid);
 }
 void shmem_test() {
     int p1, p2;
@@ -429,6 +440,60 @@ void shmem_test() {
     
 }
 
+//////////////////////////////////////////////////////////////////////////
+//  random_access (tests replacement policies)
+//////////////////////////////////////////////////////////////////////////
+void random_access_test() {
+    int i, x, rc;
+    char *addr = (char*) 0x50000000;
+    char *w;
+    bsd_t bsid = 7;
+    int npages = 10;
+    pt_t * pt;
+    virt_addr_t * vaddr;
+
+    kprintf("\nRandom access test\n");
+
+
+    rc = get_bs(bsid, npages);
+    if (rc == SYSERR) {
+    	kprintf("get_bs call failed\n");
+    	return 0;
+    }
+
+    rc = xmmap(VA2VPNO(addr), bsid, npages);
+    if (rc == SYSERR) {
+    	kprintf("xmmap call failed\n");
+    	return 0;
+    }
+
+
+    for (i=0; i<50; i++) {
+
+        // Get a number between 0 and MAX_BS_PAGES
+        // This number will be the page offset from the 
+        // beginning of the backing store that we will access
+        x = ((int) rand()) % npages; 
+
+        // Get the virtual address
+        w = addr + x*NBPG;
+
+
+        *w = 'F';
+
+        vaddr = &w;
+        pt = VPNO2VA(proctab[currpid].pd[vaddr->pd_offset].pt_base);
+        kprintf("Just accessed vaddr:0x%08x frame:%d bspage:%d\n",
+              w,
+              PA2FID(VPNO2VA(pt[vaddr->pt_offset].p_base)),
+              x);  
+    }
+
+    xmunmap(VA2VPNO(addr));
+
+    release_bs(bsid);
+}
+
 
 /*------------------------------------------------------------------------
  *  main  --  user main program
@@ -440,36 +505,64 @@ int main() {
     char buf[8];
 
 
-    kprintf("Options are:\n");
+
+
+    kprintf("Aging policy:\n");
+    kprintf("\t1 - Default (FIFO no output)\n");
+    kprintf("\t2 - FIFO  with output\n");
+    kprintf("\t3 - AGING with output\n");
+    kprintf("\nPlease Input:\n");
+    while ((i = read(CONSOLE, buf, sizeof(buf))) <1);
+    buf[i] = 0;
+    s = atoi(buf);
+    switch (s) {
+    case 1:
+        // Default.. do nothing
+        break;
+    
+    case 2:
+        // FIFO with output
+        srpolicy(FIFO);
+        break;
+        
+    case 3:
+        // AGING with output
+        srpolicy(AGING);
+        break;
+    }
+
+
+    kprintf("What test? Options are:\n");
     kprintf("\t1 - Basic Test\n");
     kprintf("\t2 - Virtual Heap Test\n");
     kprintf("\t3 - Shared Memory Test\n");
-    kprintf("\t4 - Basic Priority Inheritance Test (XINU semaphores)\n");
+    kprintf("\t4 - Random Access Test\n");
     kprintf("\nPlease Input:\n");
-////while ((i = read(CONSOLE, buf, sizeof(buf))) <1);
-////buf[i] = 0;
-////s = atoi(buf);
-////switch (s) {
-////case 1:
-////    // Basic Test
+    kprintf("\nPlease Input:\n");
+    while ((i = read(CONSOLE, buf, sizeof(buf))) <1);
+    buf[i] = 0;
+    s = atoi(buf);
+    switch (s) {
+    case 1:
+        // Basic Test
         basic_test();
-////    break;
-////
-////case 2:
-////    // Virtual heap test
-////    vheap_test();
-////    break;
-////    
-////case 3:
-////    // Shared Memory Test
-////    shmem_test();
-////    break;
+        break;
+    
+    case 2:
+        // Virtual heap test
+        vheap_test();
+        break;
+        
+    case 3:
+        // Shared Memory Test
+        shmem_test();
+        break;
 
- ///case 4:
- ///    // Basic Priority Inheritance Test (XINU semaphores)
- ///    basic_pinh_sem_test();
- ///    break;
+    case 4:
+        // Random Access Test
+        random_access_test();
+        break;
 
-////}
+    }
 	return 0;
 }
