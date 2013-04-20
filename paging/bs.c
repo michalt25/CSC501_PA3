@@ -41,7 +41,7 @@ int bs_alloc(bsd_t bsid, int npages) {
     bs_t * bsptr;
 
 #if DUSTYDEBUG
-    kprintf("bs_alloc(): Allocationg bs %d npages\n", bsid, npages);
+    kprintf("bs_alloc(): Allocationg bs %d npages %d\n", bsid, npages);
 #endif
 
     // Get pointer to backing store
@@ -107,7 +107,7 @@ int bs_free(bs_t * bsptr) {
 
     bsptr->status = BS_FREE;
     bsptr->isheap = 0;
-    bsptr->npages = 0;
+    bsptr->npages = 256;
     bsptr->frames = NULL;
     bsptr->maps   = NULL;
 
