@@ -74,11 +74,15 @@ int bs_alloc(bsd_t bsid, int npages);
 
 bs_t * get_free_bs(int npages);
 
-int bs_free(bsd_t bsid);
+int bs_free(bs_t * bsptr);
 
 int bs_add_mapping(bsd_t bsid, int pid, int vpno, int npages);
 
 bs_map_t * bs_lookup_mapping(int pid, int vpno);
+
+int bsm_frm_cleanup(bs_map_t * bsmptr);
+
+int bs_cleanproc(int pid);
 
 int bs_del_mapping(int pid, int vpno);
 

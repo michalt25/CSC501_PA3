@@ -8,6 +8,8 @@
 #include <io.h>
 #include <q.h>
 #include <stdio.h>
+#include <bs.h>
+#include <frame.h>
 
 /*------------------------------------------------------------------------
  * kill  --  kill a process and remove it from the system
@@ -27,19 +29,13 @@ SYSCALL kill(int pid)
     if (--numproc == 0)
         xdone();
 
-    // 
-    // When a process dies the following should happen.
-    // 1. All frames which currently hold any of its pages should be written to
-    //    the backing store and be freed.
-    // 2. All of it's mappings should be removed from the backing store map.
-    //bs_cleanproc(currpid);
+    // Clean up any mappings this process has (includes decreasing ref
+    // counts to frames and writing them back out if necessary).
+    // and writing back frame contents
+    bs_cleanproc(pid);
 
-    // 3. The backing stores for its heap (and stack if have chosen to implement
-    //    a private stack) should be released (remember backing stores
-    //    allocated by a process should persist unless the process explicitly
-    //    releases them).
-    // 4. The frame used for the process' page directory should be released.
-
+    // Free the frame with the page directory in it
+    frm_free(PA2FP(pptr->pd));
 
     dev = pptr->pdevs[0];
     if (! isbaddev(dev) )

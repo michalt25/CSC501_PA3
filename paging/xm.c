@@ -58,11 +58,8 @@ SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
  */
 SYSCALL xmunmap(int vpno) {
     int rc;
-    bs_t * bsptr;
-    bs_map_t * bsmptr;
-    frame_t * prev;
-    frame_t * curr;
     struct pentry * pptr;
+    bs_map_t * bsmptr;
     STATWORD ps;
 
 #if DUSTYDEBUG
@@ -88,24 +85,8 @@ SYSCALL xmunmap(int vpno) {
         return SYSERR;
     }
 
-
-    // Get a pointer to the bs_t structure for the backing store
-    bsptr = &bs_tab[bsmptr->bsid];
-
-    // Go through the frames that this bs has and release the frame
-    // that corresponds to this virtual frame.
-    prev = NULL;
-    curr = bsptr->frames;
-    while (curr) {
-
-        // Does this frame match?
-        if (curr->bspage < bsmptr->npages)
-            frm_decrefcnt(curr);
-
-        // Move to next frame in list
-        prev = curr;
-        curr = curr->bs_next;
-    }
+    // For all frames that are mapped decrease their refcnts
+    bsm_frm_cleanup(bsmptr);
 
     // Remove mapping from maps list
     rc = bs_del_mapping(currpid, vpno);

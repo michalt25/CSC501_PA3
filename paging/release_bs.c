@@ -9,7 +9,10 @@
 int release_bs(bsd_t bsid) {
     STATWORD ps;
     disable(ps);
-    bs_free(bsid);
+#if DUSTYDEBUG
+    kprintf("release_bs(%d)\n", bsid);
+#endif
+    bs_free(&bs_tab[bsid]);
     restore(ps);
     return OK;
 }

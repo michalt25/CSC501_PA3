@@ -2,6 +2,7 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <stdio.h>
 #include <paging.h>
 #include <proc.h>
 #include <bs.h>
@@ -38,6 +39,10 @@ int init_bstab() {
  */
 int bs_alloc(bsd_t bsid, int npages) {
     bs_t * bsptr;
+
+#if DUSTYDEBUG
+    kprintf("bs_alloc(): Allocationg bs %d npages\n", bsid, npages);
+#endif
 
     // Get pointer to backing store
     bsptr = &bs_tab[bsid];
@@ -83,24 +88,22 @@ bs_t * get_free_bs(int npages) {
 /*
  * bs_free - Free the backing store identified by bsid
  */
-int bs_free(bsd_t bsid) {
-    int i;
-    bs_t     * bsptr;
-    bs_map_t * prev;
-    bs_map_t * curr;
-
-    // Get pointer to the backing store
-    bsptr = &bs_tab[bsid];
-
-    // Make sure to free any of the mappings that
-    // the backing store had.
-    prev = NULL;
-    curr = bsptr->maps;
-    while (curr) {
-        prev = curr;
-        curr = curr->next;
-        freemem((struct mblock *)prev, sizeof(bs_map_t));
+int bs_free(bs_t * bsptr) {
+  
+    // If there are still mappings then other processes could
+    // share this backing store.. leave it free for now.
+    if (bsptr->maps) {
+#if DUSTYDEBUG
+        kprintf("bs_free(): BS %d still has maps (shared?) Not freeing..\n", 
+                bsptr->bsid);
+#endif
+        return OK;
     }
+    
+
+#if DUSTYDEBUG
+    kprintf("bs_free(): Freeing backing store %d\n", bsptr->bsid);
+#endif
 
     bsptr->status = BS_FREE;
     bsptr->isheap = 0;
