@@ -789,10 +789,15 @@ int main() {
     case 8:
         // Kill test
         kill_test();
+        sleep(30);
         basic_test();
+        sleep(30);
         random_access_test();
+        sleep(30);
         vheap_test();
+        sleep(30);
         shmem_test();
+        sleep(30);
         error_test();
         break;
 
