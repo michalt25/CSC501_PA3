@@ -71,9 +71,8 @@ int bs_cleanproc(int pid) {
         // Get a pointer to this backing store 'i'
         bsptr = &bs_tab[i];
 
-        // If this backing store is not being used or if this store
-        // has no maps then move on
-        if (bsptr->status == BS_FREE || bsptr->maps == NULL)
+        // If this backing store is not being used then move on
+        if (bsptr->status == BS_FREE)
             continue;
 
         // These variables help us iterate over the mapping list.
