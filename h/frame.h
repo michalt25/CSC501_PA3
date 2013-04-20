@@ -4,8 +4,7 @@
 #define _FRAME_H_
 
 #define FRAME0      1024    /* zero-th frame        */
-//#define NFRAMES     1024      /* number of frames     */
-#define NFRAMES     22      /* number of frames     */
+#define NFRAMES     1024      /* number of frames     */
 
 // Macro to convert frame ID/INDEX to physical mem address
 #define FID2PA(frmid)   ((FRAME0 + (frmid))*NBPG)
