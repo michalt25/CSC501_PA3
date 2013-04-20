@@ -76,7 +76,6 @@ struct  pentry  {
 
 /* for demand paging */
         pd_t * pd;               /* pointer to page directory in memory */
-        //XXX or frame_t *pd; /* page directory */
         bsd_t  bsid;             /* backing store for vheap      */
         int    hvpno;            /* starting pageno for vheap    */
         int    hsize;            /* vheap size (in pages)        */

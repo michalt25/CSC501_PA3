@@ -5,7 +5,7 @@
 
 #define FRAME0      1024    /* zero-th frame        */
 //#define NFRAMES     1024      /* number of frames     */
-#define NFRAMES     12      /* number of frames     */
+#define NFRAMES     22      /* number of frames     */
 
 // Macro to convert frame ID/INDEX to physical mem address
 #define FID2PA(frmid)   ((FRAME0 + (frmid))*NBPG)
@@ -72,10 +72,6 @@ typedef struct _frame_t {
     struct _frame_t * fifo_next;
         // The fifo that keeps up with the order in which frames were
         // allocated. Oldest frames are at the head of the fifo.
-
-    void * pte; // Keep up with what page table entry maps to 
-                // this frame
-
 
     // Following are only used if status == FRM_BS
     int    bsid;              // The backing store this frame maps to

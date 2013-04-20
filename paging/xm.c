@@ -17,6 +17,7 @@
  */ 
 SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
     int rc;
+    bs_t * bsptr;
     STATWORD ps;
 
 
@@ -34,9 +35,26 @@ SYSCALL xmmap(int vpno, bsd_t bsid, int npages) {
         return SYSERR;
     }
 
+
     // Disable interrupts
     disable(ps);
 
+    // Make sure the bs has been allocated
+    bsptr = &bs_tab[bsid];
+    if (bsptr->status == BS_FREE) {
+        kprintf("xmmap(): ERROR, BS %d is free!\n", bsptr->bsid);
+        kprintf("xmmap - could not create mapping!\n");
+        restore(ps);
+        return SYSERR;
+    }
+
+    // Make sure the bs  is not being used for virtual heap
+    if (bsptr->isheap == 1) {
+        kprintf("xmmap(): ERROR, BS %d is used as vheap!\n", bsptr->bsid);
+        kprintf("xmmap - could not create mapping!\n");
+        restore(ps);
+        return SYSERR;
+    }
 
     // Add a mapping to the backing store mapping table
     rc = bs_add_mapping(bsid, currpid, vpno, npages);

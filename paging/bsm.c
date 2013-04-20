@@ -266,9 +266,6 @@ int bs_add_mapping(bsd_t bsid, int pid, int vpno, int npages) {
         return SYSERR;
     }
 
-    // XXX do i need to check status of backing store first?
-    // bs_tab[bsid].status = 
-
     // Populate all of the data fields
     bsmptr->bsid   = bsid;
     bsmptr->pid    = pid;

@@ -8,26 +8,41 @@
 
 
 // When writing out a dirty page the only way to figure out which backing store
-// (virtual page and process) a dirty frame belongs to would be to traverse the
-// page tables of every process looking for a frame location that corresponds to
-// the frame we wish to write out. This is inefficient. To prevent this we use
-// an inverted page table (maps frames to pages) named frm_tab  that contains 
-// fr_map_t structures which contain the following data:
+// a dirty frame belongs to would be to traverse the page tables of every process 
+// looking for a frame location that corresponds to the frame we wish to write out. 
+// This is inefficient. To prevent this we use an inverted page table (maps frames 
+// to pages) named frm_tab that holds NFRAMES entries and each entry is a frame_t 
+// structure that contains the following data in each :
 //
-//      int fr_status;            /* MAPPED or UNMAPPED       */
-//      int fr_pid;               /* process id using this frame  */
-//      int fr_vpno;              /* corresponding virtual page no*/
-//      int fr_refcnt;            /* reference count      */
-//      int fr_type;              /* FR_DIR, FR_TBL, FR_PAGE  */
-//      int fr_dirty;
-//      void *cookie;             /* private data structure   */
-//      unsigned long int fr_loadtime;    /* when the page is loaded  */
+//  int frmid;  // The frame id (index) 
+//  int status; // FRM_FREE - frame is not being used
+//              // FRM_USED - frame is being used
+//  int type;   // FRM_PD   - Being used for a page directory
+//              // FRM_PT   - Being used for a page table
+//              // FRM_BS   - Part of a backing store
+//  int accessed; // Was the frame accessed or not since last
+//                // check?
+//  int refcnt; // If the frame is used for a page table (FRM_PGT),
+//              // refcnt is the number of mappings in the table. 
+//              // When refcnt is 0 release the frame. 
+//              //
+//              // If the frame is used for FRM_BS, refcnt will be the
+//              // number of times this frame is mapped by processes.
+//              // When refcnt is 0 release the frame.
+//  int age; // when the page is loaded, in ticks
+//           // Used for page replacement policy AGING 
+//              
+//  struct _frame_t * fifo_next;
+//      // The fifo that keeps up with the order in which frames were
+//      // allocated. Oldest frames are at the head of the fifo.
+//  // Following are only used if status == FRM_BS
+//  int    bsid;              // The backing store this frame maps to
+//  int    bspage;            // The page within the backing store
+//  struct _frame_t * bs_next; // The list of all the frames for this bs
 //
-// With this information we can easily find the pid and virtual page # of the
-// page held within any frame. From that we can easily find the backing store 
-// (using the backing store maps within bsm_tab[]) and compute which page within
-// the backing store corresponds with the page in the frame. 
 //
+// With this information we can easily find what bs and bspage the physical frame
+// maps to and write it to the appropriate location.
 //
 // Note: This table also holds some information useful in page replacement decisions
 
@@ -485,7 +500,7 @@ int frm_update_ages() {
     }
 
     // Now that all the accessed bits are updated lets update
-    // the ages of the frames. We needed to this separately because 
+    // the ages of the frames. We needed to do this separately because 
     // otherwise if two pages map to a single frame the frames would
     // get updated twice everytime this was done. By updating the
     // accessed bit in the frame (doesn't matter if you update it
@@ -525,9 +540,3 @@ int frm_update_ages() {
 
     return OK;
 }
-
-
-
-
-
-

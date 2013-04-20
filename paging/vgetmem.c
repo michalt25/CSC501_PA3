@@ -7,8 +7,6 @@
 #include <proc.h>
 #include <paging.h>
 
-//extern struct pentry proctab[];
-
 /*
  * vgetmem:
  *     allocate virtual heap storage, returning lowest WORD address

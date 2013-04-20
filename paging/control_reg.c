@@ -189,7 +189,10 @@ void enable_paging(){
 }
 
 
-// set PDBR 
+/*
+ * set_PDBR - set the page directory base register
+ *            using the provided vpno
+ */
 void set_PDBR(unsigned long n) {
   
   // From intel vol 3 pg 48:
@@ -199,15 +202,3 @@ void set_PDBR(unsigned long n) {
   n = n << 12;
   write_cr3(n); 
 }
-
-////// get PDBR 
-////unsigned long get_PDBR() {
-
-////  // From intel vol 3 pg 48:
-////  // 20 most significant bits of CR3 make up the page directory base address
-////  // This means we must right shift CR3 by 12 to get PDBR. 
-////    
-////  unsigned long temp = read_cr3();
-//////temp = temp >> 12;
-////  return temp;
-////}
